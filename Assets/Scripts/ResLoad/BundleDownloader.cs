@@ -2,7 +2,6 @@ using System.Collections;
 using System.Net;
 using System.Threading.Tasks;
 using Mirror.BouncyCastle.Ocsp;
-using Unity.Android.Gradle;
 using UnityEngine;
 using UnityEngine.Networking;
 
