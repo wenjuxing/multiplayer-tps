@@ -71,7 +71,7 @@ public class BundleDownloader : MonoBehaviour
             foreach (var n in names) Debug.Log($"  资源路径: {n}");
 
             LoadABAsync(names[0],bundle);
-            Debug.Log("不阻塞主线程");
+            Debug.Log("异步加载中...");
         }
     }
     async Task LoadABAsync(string path,AssetBundle bundle)
