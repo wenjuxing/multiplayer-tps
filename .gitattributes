@@ -1,0 +1,156 @@
+# ===========================================================================
+# Unity 工程 .gitattributes
+# 适配工程：FPSGame-Y1（Unity 6000.3.6f1）
+# 放置位置：Unity 工程根目录（与 Assets/ 同级）
+#
+# 必须在第一次 git add 之前就位！
+# 一旦二进制文件以普通 blobs 形式进入历史，后续需用 git lfs migrate 重写历史
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 默认：所有文本文件统一按 LF 存储，避免 Windows/Mac 换行符冲突
+#
+# 注意：你机器上 git 全局设了 core.autocrlf=true，会与这里的规则叠加。
+# 建议在本仓库里关掉它，让 .gitattributes 单独说话：
+#     git config --local core.autocrlf false
+# ---------------------------------------------------------------------------
+* text=auto
+
+# ---------------------------------------------------------------------------
+# 二进制资源 —— 全部交给 Git LFS
+# 每行都要带 -text，禁止 git 对其做换行符转换
+# ---------------------------------------------------------------------------
+
+# 图片 / 贴图
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.jpg  filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.gif  filter=lfs diff=lfs merge=lfs -text
+*.tga  filter=lfs diff=lfs merge=lfs -text
+*.tif  filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.bmp  filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text
+*.psb  filter=lfs diff=lfs merge=lfs -text
+*.ai   filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+*.iff  filter=lfs diff=lfs merge=lfs -text
+*.pict filter=lfs diff=lfs merge=lfs -text
+
+# 3D 模型 / 动画
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.dae   filter=lfs diff=lfs merge=lfs -text
+*.3ds   filter=lfs diff=lfs merge=lfs -text
+*.max   filter=lfs diff=lfs merge=lfs -text
+*.ma    filter=lfs diff=lfs merge=lfs -text
+*.mb    filter=lfs diff=lfs merge=lfs -text
+*.stl   filter=lfs diff=lfs merge=lfs -text
+
+# 音频 / 视频
+*.mp3  filter=lfs diff=lfs merge=lfs -text
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.aif  filter=lfs diff=lfs merge=lfs -text
+*.aiff filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.m4a  filter=lfs diff=lfs merge=lfs -text
+*.mp4  filter=lfs diff=lfs merge=lfs -text
+*.mov  filter=lfs diff=lfs merge=lfs -text
+*.avi  filter=lfs diff=lfs merge=lfs -text
+*.webm filter=lfs diff=lfs merge=lfs -text
+*.mkv  filter=lfs diff=lfs merge=lfs -text
+
+# 字体
+*.ttf   filter=lfs diff=lfs merge=lfs -text
+*.otf   filter=lfs diff=lfs merge=lfs -text
+*.woff  filter=lfs diff=lfs merge=lfs -text
+*.woff2 filter=lfs diff=lfs merge=lfs -text
+
+# 插件二进制 / 打包产物
+*.dll   filter=lfs diff=lfs merge=lfs -text
+*.so    filter=lfs diff=lfs merge=lfs -text
+*.a     filter=lfs diff=lfs merge=lfs -text
+*.lib   filter=lfs diff=lfs merge=lfs -text
+*.bundle filter=lfs diff=lfs merge=lfs -text
+*.assetbundle filter=lfs diff=lfs merge=lfs -text
+*.apk   filter=lfs diff=lfs merge=lfs -text
+*.aab   filter=lfs diff=lfs merge=lfs -text
+*.ipa   filter=lfs diff=lfs merge=lfs -text
+*.zip   filter=lfs diff=lfs merge=lfs -text
+*.7z    filter=lfs diff=lfs merge=lfs -text
+*.rar   filter=lfs diff=lfs merge=lfs -text
+*.gz    filter=lfs diff=lfs merge=lfs -text
+*.pdf   filter=lfs diff=lfs merge=lfs -text
+
+# 注意：*.unitypackage 本行已配好 LFS，但本工程 .gitignore 里默认【忽略】
+# 了 *.unitypackage（它通常是第三方资源包，解包后资源已在 Assets/ 里）。
+# 若你希望改为一并入库，删掉 .gitignore 中的 "*.unitypackage" 那一行即可。
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
+
+# ---------------------------------------------------------------------------
+# Unity 文本序列化资产
+# 前提：Project Settings > Editor > Asset Serialization = Force Text
+# 这些文件保持为文本，才能 diff 和走合并工具
+#
+# 【已修正】早先版本把 *.cubemap / *.physicMaterial / *.physicsMaterial2D
+# 同时写进了上面的 LFS 段和下面的文本段，后写的规则会覆盖前面的，
+# 结果是它们实际按文本处理——现在统一归到文本段，避免自相矛盾。
+# ---------------------------------------------------------------------------
+*.unity              text merge=unityyamlmerge eol=lf
+*.prefab             text merge=unityyamlmerge eol=lf
+*.asset              text merge=unityyamlmerge eol=lf
+*.meta               text merge=unityyamlmerge eol=lf
+*.controller         text merge=unityyamlmerge eol=lf
+*.anim               text merge=unityyamlmerge eol=lf
+*.mat                text merge=unityyamlmerge eol=lf
+*.mask               text merge=unityyamlmerge eol=lf
+*.overrideController text merge=unityyamlmerge eol=lf
+*.physicMaterial     text merge=unityyamlmerge eol=lf
+*.physicsMaterial2D  text merge=unityyamlmerge eol=lf
+*.cubemap            text merge=unityyamlmerge eol=lf
+*.spriteatlasv2      text merge=unityyamlmerge eol=lf
+*.guiskin            text merge=unityyamlmerge eol=lf
+*.fontsettings       text merge=unityyamlmerge eol=lf
+*.mixer              text merge=unityyamlmerge eol=lf
+*.preset             text merge=unityyamlmerge eol=lf
+*.shadervariants     text merge=unityyamlmerge eol=lf
+*.inputactions       text
+
+# ---------------------------------------------------------------------------
+# 代码文件：统一 LF，避免换行符污染 diff
+# ---------------------------------------------------------------------------
+*.cs      text eol=lf diff=csharp
+*.shader  text eol=lf
+*.cginc   text eol=lf
+*.hlsl    text eol=lf
+*.compute text eol=lf
+*.json    text eol=lf
+*.xml     text eol=lf
+*.md      text eol=lf
+*.asmdef  text eol=lf
+*.asmref  text eol=lf
+*.uxml    text eol=lf
+*.uss     text eol=lf
+
+# ===========================================================================
+# 关于 merge=unityyamlmerge（Unity 智能合并）—— 重要
+#
+# 上面的 *.unity / *.prefab / *.asset / *.meta 等已带 merge=unityyamlmerge。
+# 如果【没有】在 git config 里注册这个 driver，git 不会报错，而是静默退化为
+# 普通文本合并（已实测确认），冲突时留下 <<<<<<< ======= >>>>>>> 标记。
+# 也就是说：不配也能正常用，只是场景/prefab 冲突需要手工解。
+#
+# 想启用自动合并，在本仓库执行下面三条（路径已按你机器上的
+# Unity 6000.3.6f1 实际安装位置 D:\Class_Unity\6000.3.6f1 填好）：
+#
+#   git config --local merge.unityyamlmerge.name "Unity SmartMerge"
+#   git config --local merge.unityyamlmerge.driver '"D:/Class_Unity/6000.3.6f1/Editor/Data/Tools/UnityYAMLMerge.exe" merge -p %O %B %A %A'
+#   git config --local merge.unityyamlmerge.recursive binary
+#
+# merge driver 必须写在 git config 里，不能写在 .gitattributes 里。
+# （本文件早先版本末尾给了一个 [merge "unityyamlmerge"] 段，那是 .git/config
+#   的格式，放在 .gitattributes 中完全无效，已修正为本说明。）
+# ===========================================================================

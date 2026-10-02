@@ -1,0 +1,116 @@
+# ===========================================================================
+# Unity 工程 .gitignore
+# 适配工程：FPSGame-Y1（Unity 6000.3.6f1 / URP）
+# 工程根目录：E:\FPSGame_Y1\FPSGame-Y1
+# 放置位置：Unity 工程根目录（与 Assets/ 同级）
+# 绝对不要在此文件中忽略 *.meta —— 那会导致资源引用全部断裂
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Unity 自动生成的本地缓存与临时目录（体积最大，必须忽略）
+# 本工程实测：Library/ 约 2.1 GB / 34541 个文件
+# ---------------------------------------------------------------------------
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Asset Store 下载的包缓存（很大，可随时重新下载）
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/[Pp]lugins/[Ee]ditor/JetBrains*
+
+# ---------------------------------------------------------------------------
+# 【本工程特有】构建输出目录 —— 都是"产物"，不是"源"，删掉可由 Unity 重建
+#   /TestDemo/      Windows 构建输出，约 105 MB：
+#                   FPSGame-Y1.exe、UnityPlayer.dll(34MB)、FPSGame-Y1_Data/、
+#                   MonoBleedingEdge/、D3D12/、*_BurstDebugInformation_DoNotShip/
+#   /AssetBundles/  AssetBundle 构建输出：AssetBundles、prefab、unifiedraytracing
+#                   及各自的 .manifest
+# ---------------------------------------------------------------------------
+/TestDemo/
+/AssetBundles/
+
+# ---------------------------------------------------------------------------
+# 构建产物（通用）
+# ---------------------------------------------------------------------------
+*.apk
+*.aab
+*.app
+*.unitypackage
+ExportedObj/
+crashlytics-build.properties
+
+# ---------------------------------------------------------------------------
+# IDE / 编辑器生成的文件（Unity 会自动重新生成，提交只会制造冲突）
+# ---------------------------------------------------------------------------
+.vs/
+.idea/
+.gradle/
+.vsconfig
+
+# 说明：本工程的 .vscode/ 里只有 3 个通用配置（launch.json 仅含 "Attach to
+# Unity"、无本机绝对路径；settings.json；extensions.json），建议【提交】以保持
+# 团队环境一致，因此这里不忽略 .vscode/。若不需要，取消下面一行的注释。
+# .vscode/
+
+# Unity 自动生成的工程文件
+# 注意 *.slnx：本工程（Unity 6）根目录的解决方案文件是 FPSGame-Y1.slnx 这种
+# 新格式，*.sln 匹配不到它，必须单独写一行，否则会被误提交。
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# ---------------------------------------------------------------------------
+# 操作系统垃圾文件
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# 崩溃日志
+# ---------------------------------------------------------------------------
+sysinfo.txt
+
+# ---------------------------------------------------------------------------
+# Rider / Visual Studio 缓存
+# ---------------------------------------------------------------------------
+*.sln.DotSettings.user
+
+# ===========================================================================
+# 【必须提交】以下内容不要写进本文件，误加会导致工程损坏或协作异常：
+#   Assets/**/*.meta                      Unity 的 GUID / 导入设置，丢了引用全断
+#   Assets/**/*.dll                       插件库（如 Mirror 的 BouncyCastle dll）
+#   Packages/manifest.json                UPM 依赖清单
+#   Packages/packages-lock.json           依赖版本锁定，保证环境一致
+#   ProjectSettings/**                    全部项目设置（含 ProjectVersion.txt）
+#   .vscode/                              见上文说明
+#   Tools/StartLocalHttpServer.bat        工程自带工具脚本
+#   MirrorExamplesPipelineConverted.txt   Mirror 的"示例管线已转换"标记；
+#                                         提交它可避免队友 clone 后被重复转换
+# ===========================================================================
