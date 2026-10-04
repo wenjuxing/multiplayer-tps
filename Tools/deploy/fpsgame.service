@@ -1,0 +1,17 @@
+[Unit]
+Description=FPSGame Dedicated Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=game
+Group=game
+WorkingDirectory=/opt/fpsgame
+ExecStart=/opt/fpsgame/FPSGame-Y1.x86_64 -batchmode -nographics -logFile /var/log/fpsgame/server.log
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

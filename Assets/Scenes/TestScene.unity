@@ -640,6 +640,7 @@ GameObject:
   - component: {fileID: 1732656391}
   - component: {fileID: 1732656389}
   - component: {fileID: 1732656393}
+  - component: {fileID: 1732656394}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -681,7 +682,7 @@ MonoBehaviour:
   unreliableBaselineRate: 1
   unreliableRedundancy: 0
   transport: {fileID: 1732656393}
-  networkAddress: 43.142.103.57
+  networkAddress: 127.0.0.1
   maxConnections: 100
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
@@ -693,7 +694,8 @@ MonoBehaviour:
   playerPrefab: {fileID: 8472766558737792635, guid: 19740316ec3ff8e439c1f1476d132879, type: 3}
   autoCreatePlayer: 1
   playerSpawnMethod: 1
-  spawnPrefabs: []
+  spawnPrefabs:
+  - {fileID: 5305614232366960432, guid: e7be7d65fc69faa4f932043f4b05115d, type: 3}
   snapshotSettings:
     bufferTimeMultiplier: 2
     bufferLimit: 32
@@ -752,6 +754,22 @@ MonoBehaviour:
   debugLog: 0
   statisticsGUI: 0
   statisticsLog: 0
+--- !u!114 &1732656394
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1732656388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3cba32030b763b4c9dd3bff51dbef92, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkAddressConfig
+  enableOverride: 1
+  allowCommandLine: 1
+  allowEnvironmentVariable: 1
+  allowConfigFile: 1
 --- !u!1 &2082847795
 GameObject:
   m_ObjectHideFlags: 0
