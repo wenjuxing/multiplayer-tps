@@ -8,7 +8,9 @@ public class BuildAssetBundles
     public static void Build()
     {
         //拼接打包路径并创建目录
-        string outDir=Path.Combine(Application.dataPath,"../AssetBundles");
+        //必须与 AssetBundleManager.PathUrl 一致：Application.streamingAssetsPath + "/PC/"
+        //输出目录名即主包名，所以这里必须叫 PC
+        string outDir=Path.Combine(Application.dataPath,"StreamingAssets","PC");
         Directory.CreateDirectory(outDir);
        
         //选择压缩方式
