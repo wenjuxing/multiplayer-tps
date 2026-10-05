@@ -50,27 +50,18 @@ namespace QuickStart
         //进入游戏时调用（只会在本地客户端执行，服务端不会走到这里）
         public override void OnStartLocalPlayer()
         {
+            // 相机由角色身上的 CameraComp 自己驱动（它在 LateUpdate 里把 Main Camera 摆到角色身后），
+            // 这里只缓存引用，供远端玩家名牌朝向用。
             localCamera = Camera.main;
-            if (localCamera != null)
-            {
-                localCamera.transform.SetParent(transform);
-                localCamera.transform.localPosition = new Vector3(0f, 1.25f, -4.5f);
-            }
-            else
-            {
-                Debug.LogWarning("[PlayerScript] 找不到 tag=MainCamera 的相机，跳过相机跟随。");
-            }
+            if (localCamera == null)
+                Debug.LogWarning("[PlayerScript] 找不到 tag=MainCamera 的相机，名牌朝向会失效。");
 
             transform.position+=Vector3.up;           
         }
 
-        // 本地玩家离开（断线/换场景）时把相机还给场景，
-        // 否则相机会作为玩家的子物体被一起销毁，下次进游戏就没有主相机了。
+        // 本地玩家离开（断线/换场景）时清掉缓存；相机不在玩家身上，不会被连带销毁。
         public override void OnStopLocalPlayer()
         {
-            if (localCamera == null) return;
-
-            localCamera.transform.SetParent(null, true);
             localCamera = null;
         }
 
@@ -89,12 +80,7 @@ namespace QuickStart
                 return; 
             }
 
-            // ---- 本地玩家：目前仍是客户端权威，P1 再改成 [Command] 上报输入 ----
-            float moveX = Input.GetAxis("Horizontal") * Time.deltaTime * 110.0f;
-            float moveZ = Input.GetAxis("Vertical") * Time.deltaTime * 4f;
-
-            transform.Rotate(0, moveX, 0);
-            transform.Translate(0, 0, moveZ);
+            
         }
     }
 }
