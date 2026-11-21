@@ -1,0 +1,49 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.3.6f1
+CRC: 564035272
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 40609414470ed1548fcad80ae8c93cbf
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: ca2e45c8cd6d5c97417bfe5f7f82ec01
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: dad354a9e60689b7da14585919821406
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 74
+  Script: {instanceID: 0}
+- Class: 90
+  Script: {instanceID: 0}
+- Class: 91
+  Script: {instanceID: 0}
+- Class: 95
+  Script: {instanceID: 0}
+- Class: 137
+  Script: {instanceID: 0}
+- Class: 319
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/GameAssets/Animations/PlayerAnims/RifleAnimsetPro.fbx
+- Assets/GameAssets/Animations/PlayerAnims/PistolAnimsetPro.fbx
+- Assets/GameAssets/Animations/PlayerAnims/RifleAnimsetPro_Additionals.fbx
+- Assets/GameAssets/Animations/PlayerAnims/UpperBodyMask.mask
+- Assets/GameAssets/Animations/PlayerAnims/Player.controller
+- Assets/GameAssets/Animations/PlayerAnims/04_Rifle_Cover_InPlace.fbx
+- Assets/GameAssets/Animations/PlayerAnims/07_Item_Pickups.fbx
+- Assets/GameAssets/Animations/PlayerAnims/08_Pistol_Misc.fbx
+- Assets/GameAssets/Animations/PlayerAnims/02_Rifle_Runs_InPlace.fbx
+Dependencies: []

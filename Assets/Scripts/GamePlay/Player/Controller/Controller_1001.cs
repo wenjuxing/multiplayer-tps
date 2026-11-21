@@ -1,12 +1,19 @@
 using Mirror;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
 public class Controller_1001 : NetworkBehaviour
 {
+    [Header("左手 IK")]
+    [SerializeField] Rig leftHandIKRig;
+    [SerializeField] Transform leftHandIKTarget;
+    [SerializeField] Transform leftHandIdleWalkPose;
+    [SerializeField] Transform leftHandRunPose;
+    [SerializeField, Min(0f)] float leftHandIKBlendTime = 0.12f;
+    [SerializeField, Min(0f)] float leftHandPoseBlendTime = 0.15f;
+
     PlayerContext ctx;
-    StateMacheController stateMache;
-    IState idleState;
-    IState runState;
+    float runPoseBlend;
 
     void Awake()
     {
@@ -16,23 +23,90 @@ public class Controller_1001 : NetworkBehaviour
             Anim = GetComponent<AnimComp_1001>(),
         };
 
-        idleState = new IdleState_1001(ctx);
-        runState = new RunState_1001(ctx);
+        if (leftHandIKRig == null)
+            leftHandIKRig = GetComponentInChildren<Rig>(true);
 
-        stateMache = new StateMacheController();
+        if (leftHandIKRig != null)
+            leftHandIKRig.weight = 0f;
+
+        if (leftHandIKTarget != null && leftHandIdleWalkPose != null)
+        {
+            leftHandIKTarget.localPosition = leftHandIdleWalkPose.localPosition;
+            leftHandIKTarget.localRotation = leftHandIdleWalkPose.localRotation;
+        }
     }
 
-    void Start()
+    public void InitializeRigReferences(
+        Rig rig,
+        Transform target,
+        Transform idleWalkPose,
+        Transform runPose)
     {
-        stateMache.ChangeState(idleState);
+        leftHandIKRig = rig;
+        leftHandIKTarget = target;
+        leftHandIdleWalkPose = idleWalkPose;
+        leftHandRunPose = runPose;
+        runPoseBlend = 0f;
+
+        if (leftHandIKRig != null)
+            leftHandIKRig.weight = 0f;
+
+        if (leftHandIKTarget != null && leftHandIdleWalkPose != null)
+        {
+            leftHandIKTarget.localPosition = leftHandIdleWalkPose.localPosition;
+            leftHandIKTarget.localRotation = leftHandIdleWalkPose.localRotation;
+        }
     }
 
     void Update()
     {
-        stateMache.OnUpdate();
+        if (ctx.Move == null || ctx.Anim == null) return;
 
-        bool moving = ctx.Move != null && ctx.Move.CanMove && ctx.Move.InputDirection != Vector3.zero;
-        IState next = moving ? runState : idleState;
-        if (next != stateMache.CurrentState) stateMache.ChangeState(next);
+        if (isOwned)
+        {
+            ctx.Anim.SetSpeed(ctx.Move.AnimationSpeed);
+            ctx.Anim.SetRunning(ctx.Move.IsRunning);
+        }
+
+        UpdateLeftHandIKWeight();
+        UpdateLeftHandIKPose();
+    }
+
+    void UpdateLeftHandIKWeight()
+    {
+        if (leftHandIKRig == null) return;
+
+        const float targetWeight = 1f;
+        float blendSpeed = 1f / Mathf.Max(leftHandIKBlendTime, 0.001f);
+        leftHandIKRig.weight = Mathf.MoveTowards(
+            leftHandIKRig.weight,
+            targetWeight,
+            blendSpeed * Time.deltaTime);
+    }
+
+    void UpdateLeftHandIKPose()
+    {
+        if (leftHandIKTarget == null ||
+            leftHandIdleWalkPose == null ||
+            leftHandRunPose == null)
+            return;
+
+        bool isRunning = isOwned ? ctx.Anim.IsRunning : ctx.Anim.AnimatorIsRunning;
+        float targetBlend = isRunning ? 1f : 0f;
+        float blendSpeed = 1f / Mathf.Max(leftHandPoseBlendTime, 0.001f);
+        runPoseBlend = Mathf.MoveTowards(
+            runPoseBlend,
+            targetBlend,
+            blendSpeed * Time.deltaTime);
+
+        leftHandIKTarget.localPosition = Vector3.Lerp(
+            leftHandIdleWalkPose.localPosition,
+            leftHandRunPose.localPosition,
+            runPoseBlend);
+
+        leftHandIKTarget.localRotation = Quaternion.Slerp(
+            leftHandIdleWalkPose.localRotation,
+            leftHandRunPose.localRotation,
+            runPoseBlend);
     }
 }

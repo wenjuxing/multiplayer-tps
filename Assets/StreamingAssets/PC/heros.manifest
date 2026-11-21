@@ -1,0 +1,55 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.3.6f1
+CRC: 3847190002
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 92d46f65d586730c94e37d702474fa53
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 361da0e5c2e528cd7c67f5ae0b3b9f0f
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 7a5dda09acb60b0450183cc08338f1f2
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 90
+  Script: {instanceID: 0}
+- Class: 95
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: c51d78c4f63d4d4ab98cc4d3f5400021, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: a126eae416fd4d2cb6ecaf9983600022, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 70b342d8ce5c2fd48b8fa3147d48d1d1, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: aeda7bfbf984f2a4da5ab4b8967b115d, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 137
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers:
+- AssemblyName: Assembly-CSharp
+  ClassName: HeroDefinition
+- AssemblyName: Unity.Animation.Rigging
+  ClassName: UnityEngine.Animations.Rigging.TwoBoneIKConstraintData
+Assets:
+- Assets/GameAssets/Heros/hero_01/hero_01_tex.JPEG
+- Assets/GameAssets/Heros/hero_01/hero_01_prefab.prefab
+- Assets/GameAssets/Heros/hero_01/hero_01_mat.mat
+- Assets/GameAssets/Heros/HeroCatalog.asset
+- Assets/GameAssets/Heros/hero_01/hero_01_model.fbx
+Dependencies: []

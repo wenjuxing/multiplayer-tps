@@ -1,0 +1,42 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.3.6f1
+CRC: 3307405673
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: a79b50e2cdbac226afebebdae0c4274a
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: bf1a55c8530e7f06f0f7e9faf5a5ef73
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 5e717c67a0eacb00ac3acaffbc7b39a0
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: b29774ecb3434a759bfb873882000023, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/GameAssets/Weapons/weapon_01/weapon_01_model.fbx
+- Assets/GameAssets/Weapons/weapon_01/weapon_01_prefab.prefab
+- Assets/GameAssets/Weapons/weapon_01/weapon_01_mat.mat
+- Assets/GameAssets/Weapons/weapon_01/weapon_01_tex.jpg
+Dependencies: []

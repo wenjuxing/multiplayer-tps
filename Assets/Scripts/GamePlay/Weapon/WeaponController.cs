@@ -12,6 +12,17 @@ namespace FPSGame.Gameplay.Weapon
         private GameObject bulletPrefab;
         private WeaponStats stats = new WeaponStats();
         private const string BulletResourcePath = "Prefabs/Bullet";
+        private AnimComp_1001 animComp;
+
+        void Awake()
+        {
+            animComp = GetComponent<AnimComp_1001>();
+        }
+
+        public void InitializeWeapon(Transform boundFirePoint)
+        {
+            firePoint = boundFirePoint;
+        }
 
         float nextLocalFireTime;   // 客户端节流（省流量）
         float nextServerFireTime;  // 服务端限速（唯一权威）
@@ -25,6 +36,9 @@ namespace FPSGame.Gameplay.Weapon
             // 第一层：本地节流，避免每帧都发一个 Command
             if (Time.time < nextLocalFireTime) return;
             nextLocalFireTime = Time.time + stats.fireInterval;
+
+            if (animComp != null && animComp.IsRunning) return;
+            animComp?.PlayShoot();
 
             CmdFire();
         }

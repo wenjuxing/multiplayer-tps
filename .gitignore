@@ -143,3 +143,8 @@ Tools/deploy/deploy.local.ps1
 #   MirrorExamplesPipelineConverted.txt   Mirror 的"示例管线已转换"标记；
 #                                         提交它可避免队友 clone 后被重复转换
 # ===========================================================================
+
+# 本地 Agent 技能与 OpenSpec 文件
+/.agents/
+/openspec/
+/AGENTS.md

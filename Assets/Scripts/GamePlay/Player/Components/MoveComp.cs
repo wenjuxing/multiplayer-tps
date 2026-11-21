@@ -1,5 +1,6 @@
 using Mirror;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// 角色移动组件 —— 轮盘式：读方向输入，角色先转向该方向，再朝该方向移动。
@@ -12,7 +13,9 @@ using UnityEngine;
 public class MoveComp : NetworkBehaviour
 {
     [Header("速度")]
-    [SerializeField] float moveSpeed = 5f;      // 位移速度：米/秒
+    [FormerlySerializedAs("moveSpeed")]
+    [SerializeField] float walkSpeed = 3f;      // 行走速度：米/秒
+    [SerializeField] float runSpeed = 5f;       // 奔跑速度：米/秒
     [SerializeField] float rotateSpeed = 540f;  // 转身角速度：度/秒（540 ≈ 0.33 秒转 180°）
 
     [Header("轮盘方向参考")]
@@ -27,6 +30,9 @@ public class MoveComp : NetworkBehaviour
 
     /// <summary>本帧的轮盘方向（世界空间单位向量；没有输入时是零向量）。动画/音效可以读它。</summary>
     public Vector3 InputDirection { get; private set; }
+    public bool IsMoving => CanMove && InputDirection != Vector3.zero;
+    public bool IsRunning => IsMoving && Input.GetKey(KeyCode.LeftShift);
+    public float AnimationSpeed => !IsMoving ? 0f : IsRunning ? 1f : 0.5f;
 
     /// <summary>死亡、眩晕、被控时置 false，转向和位移都会停。</summary>
     public bool CanMove { get; set; } = true;
@@ -70,7 +76,8 @@ public class MoveComp : NetworkBehaviour
 
         // ---- 2. 再位移：默认沿当前朝向走 → 移动方向和朝向是同一个向量 ----
         Vector3 moveDir = moveAlongInputDir ? InputDirection : FlatForward();
-        ApplyMotion(moveDir * moveSpeed);
+        float speed = IsRunning ? runSpeed : walkSpeed;
+        ApplyMotion(moveDir * speed);
     }
 
     /// <summary>把「以相机为参照的轮盘输入」换算成世界空间方向。</summary>

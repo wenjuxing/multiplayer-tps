@@ -1,0 +1,18 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.3.6f1
+CRC: 654385567
+HashAppended: 0
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: weapons
+      Dependencies: {}
+    Info_1:
+      Name: unifiedraytracing
+      Dependencies: {}
+    Info_2:
+      Name: player_anim
+      Dependencies: {}
+    Info_3:
+      Name: heros
+      Dependencies: {}
