@@ -148,7 +148,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 12288df319f7f3b40b40285a15106957, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FPSGame.GamePlay.Player.PlayerHealth
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
   syncMethod: 0
   syncDirection: 0
   syncMode: 0
@@ -188,7 +188,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f0549e3db19ab924baa7e53e8bdd82c0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FPSGame.Gameplay.Weapon.WeaponController
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponController
   syncMethod: 0
   syncDirection: 0
   syncMode: 0

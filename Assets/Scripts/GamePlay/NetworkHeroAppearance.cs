@@ -108,7 +108,7 @@ public sealed class NetworkHeroAppearance : NetworkBehaviour
         if (TryGetComponent(out MoveComp move)) move.enabled = value;
         if (TryGetComponent(out AnimComp_1001 anim)) anim.enabled = value;
         if (TryGetComponent(out Controller_1001 controller)) controller.enabled = value;
-        if (TryGetComponent(out FPSGame.Gameplay.Weapon.WeaponController weapon)) weapon.enabled = value;
+        if (TryGetComponent(out WeaponController weapon)) weapon.enabled = value;
         if (TryGetComponent(out CameraComp camera)) camera.enabled = value;
     }
 }

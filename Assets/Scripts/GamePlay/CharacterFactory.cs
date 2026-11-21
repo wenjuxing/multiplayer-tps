@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Mirror;
-using Res;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
@@ -113,8 +112,8 @@ public sealed class CharacterFactory : MonoBehaviour
         RigBuilder rigBuilder = player.GetComponent<RigBuilder>();
         AnimComp_1001 animComp = player.GetComponent<AnimComp_1001>();
         Controller_1001 controller = player.GetComponent<Controller_1001>();
-        FPSGame.Gameplay.Weapon.WeaponController weaponController =
-            player.GetComponent<FPSGame.Gameplay.Weapon.WeaponController>();
+        WeaponController weaponController =
+            player.GetComponent<WeaponController>();
 
         if (animator == null || rigBuilder == null || animComp == null || controller == null || weaponController == null)
             throw new InvalidOperationException("Player 根预制体缺少 Animator、RigBuilder 或角色控制组件。");
