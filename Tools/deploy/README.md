@@ -3,6 +3,8 @@
 把 Unity 构建出来的 Linux Dedicated Server 包发布到腾讯云轻量服务器，并在服务器上做
 **版本目录 + 软链切换**，因此回滚不需要重新上传。
 
+Unity 的 `Tools > FPSGame-Y1` 菜单调用编辑器构建工具，服务端产物目录供 `deploy.ps1` 使用。 [Unity 出包与发布流程](../../项目文档/Skills/出包与发布流程.md)
+
 ## 文件
 
 | 文件 | 说明 |

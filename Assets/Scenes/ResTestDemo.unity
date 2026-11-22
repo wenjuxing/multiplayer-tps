@@ -310,7 +310,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 928302634}
-  - component: {fileID: 928302635}
   m_Layer: 0
   m_Name: Father
   m_TagString: Untagged
@@ -334,18 +333,6 @@ Transform:
   - {fileID: 1955651732}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &928302635
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 928302633}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56f224ac61c15cb4492725de000aa3c7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameLoopTest
 --- !u!1 &1012959379
 GameObject:
   m_ObjectHideFlags: 0
@@ -526,7 +513,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1955651732}
-  - component: {fileID: 1955651733}
   m_Layer: 0
   m_Name: Son
   m_TagString: Untagged
@@ -549,18 +535,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 928302634}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1955651733
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1955651731}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56f224ac61c15cb4492725de000aa3c7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameLoopTest
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

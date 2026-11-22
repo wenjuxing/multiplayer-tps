@@ -1,0 +1,74 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.3.6f1
+CRC: 2383111976
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: cf7027e4fd7a322c1334db3faefebddb
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 51b961c1cd47918a5578d71736647416
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 66c4a08f5debb56cd5859ef3d1d0a8a2
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 83
+  Script: {instanceID: 0}
+- Class: 90
+  Script: {instanceID: 0}
+- Class: 95
+  Script: {instanceID: 0}
+- Class: 96
+  Script: {instanceID: 0}
+- Class: 108
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 198
+  Script: {instanceID: 0}
+- Class: 199
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers:
+- AssemblyName: UnityEngine.CoreModule
+  ClassName: UnityEngine.RenderingLayerMask
+Assets:
+- Assets/GameAssets/VFX/Weapons/AK47/Prefabs/Point Light.prefab
+- Assets/GameAssets/VFX/Weapons/AK47/Texture/Glow_Main.png
+- Assets/GameAssets/VFX/Weapons/AK47/Prefabs/AK47_Muzzle.prefab
+- Assets/GameAssets/VFX/Weapons/AK47/Texture/Light.png
+- Assets/GameAssets/VFX/Weapons/AK47/Prefabs/AK47_Hit.prefab
+- Assets/GameAssets/VFX/Weapons/AK47/Prefabs/AK47_Trail.prefab
+- Assets/GameAssets/VFX/Weapons/AK47/Materials/Glow_10.mat
+- Assets/GameAssets/VFX/Weapons/AK47/Audio/Fire_Hit.wav
+- Assets/GameAssets/VFX/Weapons/AK47/Texture/Beam.png
+- Assets/GameAssets/VFX/Weapons/AK47/Mesh/Muzzle/Plane.FBX
+- Assets/GameAssets/VFX/Weapons/AK47/Audio/Automatic.wav
+- Assets/GameAssets/VFX/Weapons/AK47/Texture/Muzzle_1.png
+- Assets/GameAssets/VFX/Weapons/AK47/Materials/Light.mat
+- Assets/GameAssets/VFX/Weapons/AK47/Materials/Bullet.mat
+- Assets/GameAssets/VFX/Weapons/AK47/Shader/ParticleAdd.shader
+- Assets/GameAssets/VFX/Weapons/AK47/Materials/Muzzle/Flare_1.mat
+- Assets/GameAssets/VFX/Weapons/AK47/Texture/Impact.png
+- Assets/GameAssets/VFX/Weapons/AK47/Materials/Muzzle/Beam_3.mat
+- Assets/GameAssets/VFX/Weapons/AK47/Texture/Bullet/Bullet.png
+- Assets/GameAssets/VFX/Weapons/AK47/Materials/ImpactToon.mat
+Dependencies: []
