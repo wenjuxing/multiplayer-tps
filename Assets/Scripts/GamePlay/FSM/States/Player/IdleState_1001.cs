@@ -1,20 +1,20 @@
-// 处理角色 1001 进入待机状态时的动画
-public class IdleState_1001 : IState
-{
-    readonly PlayerContext ctx;
+// 选择待机档位并清除水平移动速度。
+public class IdleState_1001 : IState {
+    private readonly PlayerContext context;
 
-    // 保存角色组件引用
-    public IdleState_1001(PlayerContext ctx) => this.ctx = ctx;
-
-    // 进入待机时清除奔跑动画标记
-    public void OnEnter()
-    {
-        if (ctx.Anim != null) ctx.Anim.SetRunning(false);
+    // 记录待机状态所属角色的移动上下文。
+    public IdleState_1001(PlayerContext context) {
+        this.context = context;
     }
 
-    // 保留待机状态的每帧更新入口
+    // 进入待机时停止水平移动。
+    public void OnEnter() {
+        context.MoveSpeed = 0f;
+    }
+
+    // 待机期间保持零水平速度。
     public void OnUpdate() { }
 
-    // 保留退出待机状态的处理入口
+    // 退出待机时由下一状态接管速度。
     public void OnExit() { }
 }

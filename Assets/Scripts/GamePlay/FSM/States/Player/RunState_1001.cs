@@ -1,20 +1,20 @@
-// 处理角色 1001 进入奔跑状态时的动画
-public class RunState_1001 : IState
-{
-    readonly PlayerContext ctx;
+// 为角色选择奔跑档位的水平移动速度。
+public class RunState_1001 : IState {
+    private readonly PlayerContext context;
 
-    // 保存角色组件引用
-    public RunState_1001(PlayerContext ctx) => this.ctx = ctx;
-
-    // 进入奔跑时开启奔跑动画标记
-    public void OnEnter()
-    {
-        if (ctx.Anim != null) ctx.Anim.SetRunning(true);
+    // 记录奔跑状态所属角色的移动上下文。
+    public RunState_1001(PlayerContext context) {
+        this.context = context;
     }
 
-    // 保留奔跑状态的每帧更新入口
-    public void OnUpdate() { }
+    // 进入奔跑后由当帧更新应用配置速度。
+    public void OnEnter() { }
 
-    // 保留退出奔跑状态的处理入口
+    // 读取当帧的奔跑速度配置。
+    public void OnUpdate() {
+        context.MoveSpeed = context.RunSpeed;
+    }
+
+    // 退出奔跑时由下一状态接管速度。
     public void OnExit() { }
 }

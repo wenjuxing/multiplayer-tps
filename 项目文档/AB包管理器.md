@@ -1,5 +1,7 @@
 # AB包管理器（FPSGame-Y1）
 
+运行时管理器及其单例基类位于共用资源模块。 [AssetBundleManager](../Assets/Scripts/Shared/Assets/AssetBundleManager.cs) · [SingletonAutoMono](../Assets/Scripts/Shared/Assets/SingletonAutoMono.cs)
+
 > **给 AI 的调用约定**：涉及 AB 包加载/卸载/缓存的改动时，先读本文件再动 `AssetBundleManager.cs`。
 > 本文件描述的是**当前代码的实际行为**，不是设想；改了代码要回来同步本文件。
 
