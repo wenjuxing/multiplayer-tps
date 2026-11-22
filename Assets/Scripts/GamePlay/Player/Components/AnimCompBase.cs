@@ -106,7 +106,10 @@ public abstract class AnimCompBase : MonoBehaviour
     void ApplySpeed(float speed)
     {
         if (!speedParamValid || animator == null || !animator.isActiveAndEnabled) return;
-        animator.SetFloat(speedHash, speed, speedDampTime, Time.deltaTime);
+        if (speed == 0f)
+            animator.SetFloat(speedHash, speed);
+        else
+            animator.SetFloat(speedHash, speed, speedDampTime, Time.deltaTime);
     }
 
     void ApplyRunning(bool running)

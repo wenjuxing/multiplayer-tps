@@ -173,8 +173,6 @@ MonoBehaviour:
   walkSpeed: 3
   runSpeed: 5
   rotateSpeed: 540
-  useCameraYaw: 1
-  moveAlongInputDir: 0
   gravity: -20
   groundStick: -2
 --- !u!114 &2720816671339301864

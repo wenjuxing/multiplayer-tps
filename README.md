@@ -1,6 +1,6 @@
-# FPSGame-Y1
+# MultiPlayer-TPS
 
-FPSGame-Y1 是一个使用 Unity 6（`6000.3.6f1`）和 C# 开发的多人联机射击项目。项目使用 Mirror 和 KCP 实现联机，包含角色运行时组装、移动与动画同步，以及由服务端处理的开火和伤害判定。构建目标为 Windows 客户端和 Linux 专用服务器。
+MultiPlayer-TPS 是一个使用 Unity 6（`6000.3.6f1`）和 C# 开发的多人联机射击项目。项目使用 Mirror 和 KCP 实现联机，包含角色运行时组装、移动与动画同步，以及由服务端处理的开火和伤害判定。构建目标为 Windows 客户端和 Linux 专用服务器。
 
 ## 本地体验
 

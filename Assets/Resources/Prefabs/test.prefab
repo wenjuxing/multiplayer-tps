@@ -351,8 +351,6 @@ MonoBehaviour:
   syncInterval: 0
   moveSpeed: 5
   rotateSpeed: 540
-  useCameraYaw: 1
-  moveAlongInputDir: 0
   gravity: -20
   groundStick: -2
 --- !u!114 &2662297374087425987
