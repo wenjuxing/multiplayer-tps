@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Serialization;
 
-/// <summary>由本地拥有者处理鼠标转向和前进，根节点变换通过 NetworkTransformHybrid 同步。</summary>
+/// <summary>由本地拥有者处理鼠标转向和前后移动，根节点变换通过 NetworkTransformHybrid 同步。</summary>
 [DefaultExecutionOrder(-2)]
 public class MoveComp : NetworkBehaviour {
     private const float MinDirectionSqrMagnitude = 0.0001f;
@@ -19,11 +19,11 @@ public class MoveComp : NetworkBehaviour {
     [SerializeField] private float gravity = -20f;
     [SerializeField] private float groundStick = -2f;
 
-    /// <summary>按住 W 时的世界空间目标方向，否则为零。</summary>
+    /// <summary>按 W 或 S 时的世界空间目标移动方向，无有效方向时为零。</summary>
     public Vector3 InputDirection { get; private set; }
     public bool IsMoving => CanMove && horizontalSpeed != 0f;
     public bool IsRunning => CanMove && runRequested;
-    public float AnimationSpeed => !IsMoving ? 0f : IsRunning ? 1f : 0.5f;
+    public float AnimationSpeed => IsMoving ? Mathf.Sign(horizontalSpeed) * (IsRunning ? 1f : 0.5f) : 0f;
 
     /// <summary>禁动时停止转向和水平位移。</summary>
     public bool CanMove { get; set; } = true;
@@ -64,15 +64,17 @@ public class MoveComp : NetworkBehaviour {
         }
 
         Keyboard keyboard = Keyboard.current;
-        bool moveRequested = keyboard != null && keyboard.wKey.isPressed;
-        runRequested = moveRequested && keyboard.leftShiftKey.isPressed;
+        bool forwardRequested = keyboard != null && keyboard.wKey.isPressed;
+        bool backwardRequested = keyboard != null && keyboard.sKey.isPressed;
+        int moveDirection = (forwardRequested ? 1 : 0) - (backwardRequested ? 1 : 0);
+        runRequested = moveDirection != 0 && keyboard.leftShiftKey.isPressed;
 
         Vector3 targetDirection = ReadTargetDirection();
         Quaternion targetRotation = Quaternion.LookRotation(targetDirection, Vector3.up);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotateSpeed * Time.deltaTime);
 
-        InputDirection = moveRequested ? targetDirection : Vector3.zero;
-        horizontalSpeed = moveRequested ? (runRequested ? runSpeed : walkSpeed) : 0f;
+        InputDirection = targetDirection * moveDirection;
+        horizontalSpeed = (runRequested ? runSpeed : walkSpeed) * moveDirection;
         ApplyMotion(FlatForward() * horizontalSpeed);
     }
 

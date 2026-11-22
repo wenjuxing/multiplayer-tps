@@ -72,7 +72,7 @@ public abstract class AnimCompBase : MonoBehaviour
 
     public void SetSpeed(float speed)
     {
-        AnimationSpeed = Mathf.Clamp01(speed);
+        AnimationSpeed = Mathf.Clamp(speed, -1f, 1f);
         ApplySpeed(AnimationSpeed);
     }
 
