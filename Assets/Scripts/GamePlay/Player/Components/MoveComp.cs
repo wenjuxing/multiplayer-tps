@@ -7,6 +7,7 @@ using UnityEngine.Serialization;
 [DefaultExecutionOrder(-2)]
 public class MoveComp : NetworkBehaviour {
     private const float MinDirectionSqrMagnitude = 0.0001f;
+    private const float NearAimRadius = 0.24f;
 
     [Header("速度")]
     [FormerlySerializedAs("moveSpeed")]
@@ -28,6 +29,7 @@ public class MoveComp : NetworkBehaviour {
     public bool CanMove { get; set; } = true;
 
     private CharacterController controller;
+    private Transform muzzle;
     private Vector3 lastTargetDirection;
     private float horizontalSpeed;
     private float verticalSpeed;
@@ -35,6 +37,11 @@ public class MoveComp : NetworkBehaviour {
 
     private void Awake() {
         controller = GetComponent<CharacterController>();
+    }
+
+    public void BindMuzzle(Transform firePoint) {
+        muzzle = firePoint;
+        lastTargetDirection = Vector3.zero;
     }
 
     public override void OnStopAuthority() {
@@ -72,19 +79,50 @@ public class MoveComp : NetworkBehaviour {
     private Vector3 ReadTargetDirection() {
         Camera camera = Camera.main;
         Mouse mouse = Mouse.current;
-        if (camera != null && mouse != null) {
-            Ray ray = camera.ScreenPointToRay(mouse.position.ReadValue());
+        if (Application.isFocused && camera != null && mouse != null && mouse.enabled) {
+            Vector2 screenPosition = mouse.position.ReadValue();
             Vector3 position = transform.position;
-            Plane movementPlane = new Plane(Vector3.up, position);
-            if (movementPlane.Raycast(ray, out float distance)) {
-                Vector3 direction = ray.GetPoint(distance) - position;
-                direction.y = 0f;
-                if (direction.sqrMagnitude >= MinDirectionSqrMagnitude)
-                    lastTargetDirection = direction.normalized;
+            Vector3 planePoint = muzzle != null ? muzzle.position : position;
+            Plane aimPlane = new Plane(Vector3.up, planePoint);
+            Ray ray = camera.ScreenPointToRay(screenPosition);
+            if (camera.pixelRect.Contains(screenPosition) && aimPlane.Raycast(ray, out float distance)) {
+                Vector3 toTarget = ray.GetPoint(distance) - position;
+                toTarget.y = 0f;
+                if (muzzle != null) {
+                    if (TryGetMuzzleTargetDirection(toTarget, out Vector3 direction))
+                        lastTargetDirection = direction;
+                } else if (toTarget.sqrMagnitude >= MinDirectionSqrMagnitude) {
+                    lastTargetDirection = toTarget.normalized;
+                }
             }
         }
 
         return lastTargetDirection == Vector3.zero ? FlatForward() : lastTargetDirection;
+    }
+
+    private bool TryGetMuzzleTargetDirection(Vector3 toTarget, out Vector3 direction) {
+        direction = default;
+        float targetDistanceSquared = toTarget.sqrMagnitude;
+        Vector3 bore = Vector3.ProjectOnPlane(muzzle.forward, Vector3.up);
+        if (!float.IsFinite(targetDistanceSquared) || targetDistanceSquared < NearAimRadius * NearAimRadius ||
+            bore.sqrMagnitude < MinDirectionSqrMagnitude) return false;
+
+        bore.Normalize();
+        Vector3 muzzleOffset = Vector3.ProjectOnPlane(muzzle.position - transform.position, Vector3.up);
+        float forwardOffset = Vector3.Dot(muzzleOffset, bore);
+        Vector3 sideOffset = muzzleOffset - bore * forwardOffset;
+        float axialDistanceSquared = targetDistanceSquared - sideOffset.sqrMagnitude;
+        if (axialDistanceSquared <= 0f) return false;
+
+        // Find a point on the current bore at the same distance from the pivot as the target.
+        // The yaw between those points aligns the whole character without changing the grip.
+        float axialDistance = Mathf.Sqrt(axialDistanceSquared);
+        if (axialDistance <= forwardOffset) return false;
+
+        Vector3 pointOnBore = sideOffset + bore * axialDistance;
+        float yaw = Vector3.SignedAngle(pointOnBore, toTarget, Vector3.up);
+        direction = Quaternion.AngleAxis(yaw, Vector3.up) * FlatForward();
+        return true;
     }
 
     private Vector3 FlatForward() {

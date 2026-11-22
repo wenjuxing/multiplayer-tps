@@ -1,93 +1,129 @@
 using Mirror;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
+[DefaultExecutionOrder(10)]
 [RequireComponent(typeof(PlayerHealth))]
-public class WeaponController : NetworkBehaviour
-{
-    private Transform firePoint;
-    private GameObject bulletPrefab;
-    private WeaponStats stats = new WeaponStats();
+public class WeaponController : NetworkBehaviour {
     private const string BulletResourcePath = "Prefabs/Bullet";
+    private const float MuzzleEffectLifetime = 0.15f;
+    private const float HitEffectLifetime = 1f;
+    private Transform muzzleVfxPoint;
+    private readonly WeaponStats stats = new WeaponStats();
     private AnimComp_1001 animComp;
+    private CameraComp cameraComp;
+    private ShotCollision shotCollision;
+    private float? pendingShotYaw;
+    private float nextLocalFireTime;
+    private float nextServerFireTime;
 
-    void Awake()
-    {
+    private void Awake() {
         animComp = GetComponent<AnimComp_1001>();
+        cameraComp = GetComponent<CameraComp>();
+        shotCollision = new ShotCollision();
     }
 
-    public void InitializeWeapon(Transform boundFirePoint)
-    {
-        firePoint = boundFirePoint;
+    public void InitializeWeapon(Transform muzzle) {
+        muzzleVfxPoint = muzzle;
     }
 
-    float nextLocalFireTime;   // 客户端节流（省流量）
-    float nextServerFireTime;  // 服务端限速（唯一权威）
+    private void Update() {
+        if (!isOwned || !Application.isFocused || muzzleVfxPoint == null ||
+            Time.time < nextLocalFireTime || (animComp != null && animComp.IsRunning)) return;
+        Mouse mouse = Mouse.current;
+        if (mouse == null || !mouse.enabled || !mouse.leftButton.wasPressedThisFrame) return;
 
-    void Update()
-    {
-        // 只有拥有者读输入；无头 Dedicated Server 上 isOwned 恒为 false
-        if (!isOwned) return;
-        if (!Input.GetKeyDown(KeyCode.Mouse0)) return;
+        Camera camera = Camera.main;
+        if (camera == null || !camera.pixelRect.Contains(mouse.position.ReadValue())) return;
 
-        // 第一层：本地节流，避免每帧都发一个 Command
-        if (Time.time < nextLocalFireTime) return;
+        float shotYaw = transform.eulerAngles.y;
         nextLocalFireTime = Time.time + stats.fireInterval;
-
-        if (animComp != null && animComp.IsRunning) return;
         animComp?.PlayShoot();
-
-        CmdFire();
+        CmdFire(shotYaw);
     }
 
-    Vector3 GetOrigin() => firePoint != null
-        ? firePoint.position
-        : transform.position + Vector3.up * AutoAim.ChestOffset;
+    private void LateUpdate() {
+        if (!isServer || !pendingShotYaw.HasValue) return;
+        float shotYaw = pendingShotYaw.Value;
+        pendingShotYaw = null;
+        ResolveServerShot(shotYaw);
+    }
 
-    //当前方法是客户端请求服务端运行的方法
-    //开火目标选择/命中检测服务端算
+    private void OnDisable() {
+        pendingShotYaw = null;
+    }
+
     [Command]
-    void CmdFire()
-    {
-        // 第二层：服务端限速，客户端的 fireInterval 不可信
-        if (Time.time < nextServerFireTime) return;
+    private void CmdFire(float shotYaw) {
+        if (!isActiveAndEnabled || Time.time < nextServerFireTime || pendingShotYaw.HasValue ||
+            muzzleVfxPoint == null || !float.IsFinite(shotYaw)) return;
+
         nextServerFireTime = Time.time + stats.fireInterval;
+        pendingShotYaw = shotYaw;
+    }
 
-        Vector3 origin = GetOrigin();
+    private void ResolveServerShot(float shotYaw) {
+        if (muzzleVfxPoint == null) return;
 
-        // 服务端判定命中
-        PlayerHealth target = AutoAim.SelectTarget(netIdentity, origin);
+        // Keep the server's evaluated grip and position while applying the click-frame yaw.
+        Quaternion shotRotation = Quaternion.Euler(0f, shotYaw % 360f, 0f);
+        Quaternion rotationDelta = shotRotation * Quaternion.Inverse(transform.rotation);
+        Vector3 rootPosition = transform.position;
+        Vector3 muzzlePosition = rootPosition + rotationDelta * (muzzleVfxPoint.position - rootPosition);
+        Quaternion muzzleRotation = rotationDelta * muzzleVfxPoint.rotation;
+        Vector3 direction = muzzleRotation * Vector3.forward;
+        var ray = new Ray(muzzlePosition, direction);
+        Physics.SyncTransforms();
+        bool stopped = shotCollision.TryGetMuzzleContact(muzzlePosition, transform, out ShotCollision.Contact contact) ||
+            shotCollision.TryGetClosest(ray, stats.range, transform, out contact);
 
-        Vector3 direction = target != null
-            ? AutoAim.GetAimPoint(target.transform) - origin
-            : transform.forward;
-
-        // 方向退化（目标和枪口几乎重合）时兜底，避免 LookRotation(0) 报错
-        direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : transform.forward;
-
+        PlayerHealth target = stopped ? contact.Target : null;
+        Vector3 hitPosition = stopped ? contact.Point : ray.GetPoint(stats.range);
         if (target != null)
             target.ServerTakeDemage(stats.demage, netId);
 
-        SpawnBullet(origin, direction);
+        SpawnBullet(muzzlePosition, direction, hitPosition);
+        RpcPlayShotEffects(muzzlePosition, muzzleRotation, stopped && contact.IsTarget,
+            stopped && contact.IsVirtualEnemy, hitPosition, direction);
     }
 
-    void SpawnBullet(Vector3 origin, Vector3 direction)
-    {
-        GameObject prefab = bulletPrefab != null
-            ? bulletPrefab
-            : Resources.Load<GameObject>(BulletResourcePath);
+    [ClientRpc]
+    private void RpcPlayShotEffects(
+        Vector3 muzzlePosition, Quaternion muzzleRotation, bool hitTarget, bool hitVirtualEnemy,
+        Vector3 hitPosition, Vector3 direction) {
+        if (hitVirtualEnemy && isOwned)
+            cameraComp?.PlayHitShake();
 
-        if (prefab == null)
-        {
+        WeaponShotEffects effects = WeaponShotEffects.Client;
+        if (effects == null)
+            return;
+
+        effects.PlayAudio(muzzlePosition, hitVirtualEnemy, hitPosition);
+
+        GameObject muzzle = effects.Muzzle;
+        if (muzzle != null) {
+            GameObject instance = muzzleVfxPoint != null
+                ? Instantiate(muzzle, muzzleVfxPoint, false)
+                : Instantiate(muzzle, muzzlePosition, muzzleRotation);
+            Destroy(instance, MuzzleEffectLifetime);
+        }
+
+        GameObject hit = effects.Hit;
+        if (hitTarget && hit != null) {
+            GameObject instance = Instantiate(hit, hitPosition, Quaternion.LookRotation(-direction));
+            Destroy(instance, HitEffectLifetime);
+        }
+    }
+
+    private void SpawnBullet(Vector3 origin, Vector3 direction, Vector3 endpoint) {
+        GameObject prefab = Resources.Load<GameObject>(BulletResourcePath);
+        if (prefab == null) {
             Debug.LogError($"[Combat] 找不到子弹预制体：{BulletResourcePath}");
             return;
         }
 
         GameObject go = Instantiate(prefab, origin, Quaternion.LookRotation(direction));
-
-        // direction 是 SyncVar，必须在 Spawn 之前赋值，才会随 spawn 消息下发给客户端
-        if (go.TryGetComponent(out Bullet bullet))
-            bullet.direction = direction;
-
-        NetworkServer.Spawn(go);   // 只有服务端能 Spawn
+        go.GetComponent<Bullet>().InitializePath(origin, endpoint);
+        NetworkServer.Spawn(go);
     }
 }

@@ -1,31 +1,45 @@
 using Mirror;
 using UnityEngine;
 
-/// <summary>
-/// 子弹：纯表现 + 生命周期，命中判定不在这里（服务端开火瞬间已算完）。
-/// 各端按同一个 direction 本地推进，所以不需要 NetworkTransform，也没有每帧同步开销。
-/// </summary>
-public class Bullet : NetworkBehaviour
-{
+/// <summary>Plays the server-confirmed shot path on each client.</summary>
+public class Bullet : NetworkBehaviour {
+    private const float EndpointHold = 0.15f;
+
     [Tooltip("飞行速度（米/秒）")]
-    [SerializeField] float speed = 40f;
+    [SerializeField, Min(0.01f)] private float speed = 20f;
+    [SyncVar] private Vector3 origin;
+    [SyncVar] private Vector3 endpoint;
+    [SyncVar] private double launchedAt;
+    [SyncVar] private float flightTime;
 
-    [Tooltip("最大飞行距离（米），到达后由服务端销毁")]
-    [SerializeField] float maxDistance = 30f;
+    [Server]
+    public void InitializePath(Vector3 start, Vector3 end) {
+        origin = start;
+        endpoint = end;
+        flightTime = Vector3.Distance(start, end) / speed;
+        launchedAt = NetworkTime.time;
+    }
 
-    [SyncVar] public Vector3 direction;
+    public override void OnStartClient() {
+        base.OnStartClient();
+        UpdatePosition();
 
-    float traveled;
+        GameObject trail = WeaponShotEffects.Client?.Trail;
+        if (trail != null)
+            Instantiate(trail, transform, false);
+    }
 
-    void Update()
-    {
-        float step = speed * Time.deltaTime;
-        transform.position += direction * step;
+    private void Update() {
+        double elapsed = NetworkTime.time - launchedAt;
+        UpdatePosition();
+        // Leave the endpoint visible while observing clients catch up to the server timeline.
+        if (isServer && elapsed >= flightTime + EndpointHold)
+            NetworkServer.Destroy(gameObject);
+    }
 
-        // 生命周期只由服务端管，客户端的对象等 Mirror 的 unspawn 消息回收
-        if (!isServer) return;
-
-        traveled += step;
-        if (traveled >= maxDistance) NetworkServer.Destroy(gameObject);
+    private void UpdatePosition() {
+        float elapsed = (float)(NetworkTime.time - launchedAt);
+        float progress = flightTime > 0f ? elapsed / flightTime : 1f;
+        transform.position = Vector3.Lerp(origin, endpoint, progress);
     }
 }

@@ -148,20 +148,21 @@ public sealed class CharacterFactory : MonoBehaviour
             if (!leftHandConstraint.IsValid())
                 throw new InvalidOperationException($"角色 {roleId} 的左手 TwoBoneIKConstraint 数据无效。");
 
+            Transform muzzle = weaponBinding.MuzzleVfxPoint != null ? weaponBinding.MuzzleVfxPoint : weaponBinding.FirePoint;
             rigBuilder.layers = new List<RigLayer> { new RigLayer(heroBinding.CharacterRig, true) };
             controller.InitializeRigReferences(
-                heroBinding.CharacterRig,
+                leftHandConstraint,
                 weaponBinding.LeftHandIKTarget,
                 weaponBinding.LeftHandIdleWalkPose,
                 weaponBinding.LeftHandRunPose);
-            weaponController.InitializeWeapon(weaponBinding.FirePoint);
-
             animator.Rebind();
 
             if (!rigBuilder.Build())
                 throw new InvalidOperationException($"角色 {roleId} 的 RigBuilder.Build() 失败。");
 
             EnsureGeneration(assemblyGeneration);
+            player.GetComponent<MoveComp>()?.BindMuzzle(muzzle);
+            weaponController.InitializeWeapon(muzzle);
             if (networkAppearance != null)
                 networkAppearance.MarkAssembled(roleId);
 

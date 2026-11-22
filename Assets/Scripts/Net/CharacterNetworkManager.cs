@@ -9,6 +9,8 @@ public sealed class CharacterNetworkManager : NetworkManager
 
     readonly HashSet<int> pendingPlayers = new HashSet<int>();
 
+    internal WeaponShotEffects ShotEffects { get; } = new WeaponShotEffects();
+
     public override void Awake()
     {
         base.Awake();
@@ -112,8 +114,14 @@ public sealed class CharacterNetworkManager : NetworkManager
         CharacterFactory.Instance?.ReleaseSessionAssets();
     }
 
+    public override void OnStartClient() {
+        base.OnStartClient();
+        ShotEffects.StartSession();
+    }
+
     public override void OnStopClient()
     {
+        ShotEffects.StopSession();
         base.OnStopClient();
         CharacterFactory.Instance?.ReleaseSessionAssets();
     }

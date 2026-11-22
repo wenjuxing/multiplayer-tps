@@ -13,6 +13,7 @@ public class Controller_1001 : NetworkBehaviour
     [SerializeField, Min(0f)] float leftHandPoseBlendTime = 0.15f;
 
     PlayerContext ctx;
+    private TwoBoneIKConstraint leftHandConstraint;
     float runPoseBlend;
 
     void Awake()
@@ -23,11 +24,13 @@ public class Controller_1001 : NetworkBehaviour
             Anim = GetComponent<AnimComp_1001>(),
         };
 
-        if (leftHandIKRig == null)
-            leftHandIKRig = GetComponentInChildren<Rig>(true);
-
         if (leftHandIKRig != null)
-            leftHandIKRig.weight = 0f;
+            leftHandConstraint = leftHandIKRig.GetComponentInChildren<TwoBoneIKConstraint>(true);
+        else
+            leftHandConstraint = GetComponentInChildren<TwoBoneIKConstraint>(true);
+
+        if (leftHandConstraint != null)
+            leftHandConstraint.weight = 0f;
 
         if (leftHandIKTarget != null && leftHandIdleWalkPose != null)
         {
@@ -37,19 +40,19 @@ public class Controller_1001 : NetworkBehaviour
     }
 
     public void InitializeRigReferences(
-        Rig rig,
+        TwoBoneIKConstraint constraint,
         Transform target,
         Transform idleWalkPose,
         Transform runPose)
     {
-        leftHandIKRig = rig;
+        leftHandConstraint = constraint;
         leftHandIKTarget = target;
         leftHandIdleWalkPose = idleWalkPose;
         leftHandRunPose = runPose;
         runPoseBlend = 0f;
 
-        if (leftHandIKRig != null)
-            leftHandIKRig.weight = 0f;
+        if (leftHandConstraint != null)
+            leftHandConstraint.weight = 0f;
 
         if (leftHandIKTarget != null && leftHandIdleWalkPose != null)
         {
@@ -74,12 +77,12 @@ public class Controller_1001 : NetworkBehaviour
 
     void UpdateLeftHandIKWeight()
     {
-        if (leftHandIKRig == null) return;
+        if (leftHandConstraint == null) return;
 
         const float targetWeight = 1f;
         float blendSpeed = 1f / Mathf.Max(leftHandIKBlendTime, 0.001f);
-        leftHandIKRig.weight = Mathf.MoveTowards(
-            leftHandIKRig.weight,
+        leftHandConstraint.weight = Mathf.MoveTowards(
+            leftHandConstraint.weight,
             targetWeight,
             blendSpeed * Time.deltaTime);
     }
