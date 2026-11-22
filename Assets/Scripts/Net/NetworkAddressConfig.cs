@@ -1,29 +1,18 @@
+// 在启动时按配置优先级覆盖服务器地址
 using System;
 using System.IO;
 using UnityEngine;
 using Mirror;
 
-/// <summary>
-/// 启动时覆盖 NetworkManager.networkAddress。
-///
-/// 目的：同一份包既能连本地服务端、也能连腾讯云生产服，不需要为了换地址重新出包。
-///
-/// 覆盖优先级（先命中先用，命中后不再往低优先级找）：
-///   1. 命令行参数  -serverAddr 127.0.0.1        （推荐用于快捷方式 / bat / 命令行自测）
-///   2. 环境变量    FPSGAME_SERVER_ADDR
-///   3. 配置文件    &lt;持久化目录&gt;/server_addr.txt   （改了立刻生效，不用重新打包）
-///   4. 都不存在    → 用场景里 NetworkManager 上配的地址（什么都不做）
-///
-/// 本组件挂到场景里 NetworkManager 所在的物体上即可（和 KcpTransport 同一个物体）。
-/// 只改 networkAddress，不碰端口 —— 端口仍然由 KcpTransport（7777）决定。
-/// </summary>
 [DisallowMultipleComponent]
 [RequireComponent(typeof(NetworkManager))]
 public class NetworkAddressConfig : MonoBehaviour
 {
+    // 服务器地址覆盖总开关
     [Tooltip("关掉后本组件完全不生效，地址只由场景里 NetworkManager 的值决定。")]
     public bool enableOverride = true;
 
+    // 启用可用的地址来源，按命令行、环境变量、配置文件的顺序尝试
     [Tooltip("允许命令行参数 -serverAddr <ip> 覆盖地址。")]
     public bool allowCommandLine = true;
 
@@ -48,11 +37,10 @@ public class NetworkAddressConfig : MonoBehaviour
         get { return Path.Combine(Application.persistentDataPath, ConfigFileName); }
     }
 
-    // NetworkManager 的 Awake() 里会注册 singleton，本组件必须晚于它执行；
-    // 但又要早于用户点 HUD 上的 Client 按钮（那是 StartClient），所以 Awake 正合适。
+    // 在组件初始化时查找网络管理器并应用地址
     void Awake()
     {
-        // 先兜底：万一 NetworkManager 还没注册（脚本执行顺序被改过），自己找一次。
+        // 网络管理器尚未注册时从当前对象或场景查找
         NetworkManager nm = NetworkManager.singleton;
         if (nm == null)
             nm = GetComponent<NetworkManager>();
@@ -64,18 +52,17 @@ public class NetworkAddressConfig : MonoBehaviour
             return;
         }
 
+        // 在连接前应用启动时读取到的地址
         ApplyOverride(nm);
     }
 
-    /// <summary>
-    /// 按优先级解析并应用地址覆盖。可在运行时手动调用（例如做调试按钮）。
-    /// 返回 true 表示确实发生了覆盖。
-    /// </summary>
+    // 将解析到的服务器地址应用到网络管理器
     public bool ApplyOverride(NetworkManager nm)
     {
         if (!enableOverride || nm == null)
             return false;
 
+        // 按优先级查找有效的覆盖地址
         string source;
         string address = Resolve(out source);
 
@@ -86,6 +73,7 @@ public class NetworkAddressConfig : MonoBehaviour
             return false;
         }
 
+        // 更新网络管理器的地址并记录覆盖来源
         string previous = nm.networkAddress;
         nm.networkAddress = address;
 
@@ -95,11 +83,12 @@ public class NetworkAddressConfig : MonoBehaviour
         return true;
     }
 
-    /// <summary>按优先级解析地址；没有任何覆盖来源时返回 null，source 为 null。</summary>
+    // 查找第一个有效的地址覆盖及其来源
     public string Resolve(out string source)
     {
         source = null;
 
+        // 优先检查命令行参数
         if (allowCommandLine)
         {
             string fromArgs = ReadCommandLineAddress();
@@ -110,6 +99,7 @@ public class NetworkAddressConfig : MonoBehaviour
             }
         }
 
+        // 命令行未给出有效地址时检查环境变量
         if (allowEnvironmentVariable)
         {
             string fromEnv = ReadEnvironmentAddress();
@@ -120,6 +110,7 @@ public class NetworkAddressConfig : MonoBehaviour
             }
         }
 
+        // 最后读取持久化目录中的配置文件
         if (allowConfigFile)
         {
             string fromFile = ReadConfigFileAddress();
@@ -133,7 +124,7 @@ public class NetworkAddressConfig : MonoBehaviour
         return null;
     }
 
-    // -serverAddr 127.0.0.1   /   -serverAddr=127.0.0.1   两种写法都认
+    // 读取空格或等号形式的服务器地址参数
     private static string ReadCommandLineAddress()
     {
         string[] args = Environment.GetCommandLineArgs();
@@ -154,12 +145,14 @@ public class NetworkAddressConfig : MonoBehaviour
         return null;
     }
 
+    // 读取服务器地址环境变量
     private static string ReadEnvironmentAddress()
     {
         string v = Environment.GetEnvironmentVariable("FPSGAME_SERVER_ADDR");
         return string.IsNullOrEmpty(v) ? null : Sanitize(v);
     }
 
+    // 从本地配置文件读取服务器地址
     private static string ReadConfigFileAddress()
     {
         try
@@ -177,7 +170,7 @@ public class NetworkAddressConfig : MonoBehaviour
         }
     }
 
-    // 去掉空白、引号、结尾的换行（bat 里 echo 会带 \r\n）
+    // 清理地址两端的空白和引号
     private static string Sanitize(string raw)
     {
         if (string.IsNullOrEmpty(raw)) return null;
@@ -186,7 +179,7 @@ public class NetworkAddressConfig : MonoBehaviour
         return string.IsNullOrEmpty(s) ? null : s;
     }
 
-    /// <summary>把地址写进配置文件（出包后也能改，无需重新打包）。</summary>
+    // 将处理后的地址写入本地配置文件
     public static bool WriteConfigFile(string address)
     {
         try
@@ -202,7 +195,7 @@ public class NetworkAddressConfig : MonoBehaviour
         }
     }
 
-    /// <summary>删除配置文件，回到场景默认地址。</summary>
+    // 删除本地地址配置文件
     public static bool ClearConfigFile()
     {
         try
@@ -221,7 +214,7 @@ public class NetworkAddressConfig : MonoBehaviour
         }
     }
 
-    // 右键组件 → 打印当前生效来源，排障用
+    // 在组件菜单中输出覆盖地址、来源和场景地址
     [ContextMenu("打印当前生效的服务器地址")]
     void LogEffectiveAddress()
     {

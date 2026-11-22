@@ -1,27 +1,21 @@
+// 让本地玩家的相机俯视跟随角色并播放命中震动
 using Mirror;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-/// <summary>
-/// 第三人称上帝视角跟随相机 —— 挂在角色（Player 预制体）上，由本地玩家自己驱动场景里的 Main Camera。
-///
-/// 位置：在 MoveComp 更新角色位移后跟随，相机位姿供本帧瞄准和 HUD 使用。
-/// 朝向：只由 offset 决定，是个常量 —— 所以相机朝向不随角色朝向改变，转的只有角色自己。
-///
-/// 因为它是 NetworkBehaviour，只有「本机拥有的那个角色」（isOwned）才会去动相机：
-/// 专用服务器和每个客户端上看到的远端角色都不会碰相机。
-/// 预制体不能引用场景物体，所以相机是在运行时按 tag 找 Camera.main。
-/// </summary>
 [DefaultExecutionOrder(-1)]
 public class CameraComp : NetworkBehaviour
 {
+    // 命中震动的持续时间和最大幅度
     private const float HitShakeDuration = 0.12f;
     private const float HitShakeAmplitude = 0.035f;
 
+    // 相机相对角色的世界坐标偏移
     [Header("相对角色的固定偏移（世界空间）")]
     [Tooltip("相机 = 角色位置 + 这个偏移。y 越大越俯视，z 越小越靠后")]
     [SerializeField] Vector3 offset = new Vector3(0f, 8f, -6f);
 
+    // 跟随平滑时间，设为零时直接跟随
     [Header("平滑")]
     [Tooltip("0 = 硬跟随，每帧贴死角色；大于 0 = 平滑跟随的阻尼时间（秒）")]
     [SerializeField] float followSmoothTime = 0f;
@@ -32,26 +26,31 @@ public class CameraComp : NetworkBehaviour
     private bool hitShakeActive;
     private double hitShakeStartedAt;
     private Transform shakenCamera;
+    // 渲染前保存的相机位置，用于渲染后恢复
     private Vector3 unshakenPosition;
 
-    // 本地玩家一生成就把相机摆到位，避免开局第一帧相机还停在场景里的原始位置
+    // 本地玩家生成时立即摆好相机
     public override void OnStartLocalPlayer()
     {
         if (!TryGetCamera()) return;
         SnapToTarget();
     }
 
+    // 失去角色控制权时停止相机震动
     public override void OnStopAuthority() {
         StopHitShake();
     }
 
+    // 相机组件禁用时清理震动
     private void OnDisable() {
         StopHitShake();
     }
 
+    // 为本地玩家启动或重置命中震动
     internal void PlayHitShake() {
         if (!isActiveAndEnabled || !isOwned || !TryGetCamera()) return;
 
+        // 连续命中时刷新开始时间，沿用已注册的渲染回调
         hitShakeStartedAt = Time.unscaledTimeAsDouble;
         if (hitShakeActive) return;
 
@@ -60,16 +59,18 @@ public class CameraComp : NetworkBehaviour
         RenderPipelineManager.endCameraRendering += EndCameraRendering;
     }
 
+    // 渲染前临时应用逐渐减弱的震动
     private void ApplyHitShake(ScriptableRenderContext context, Camera camera) {
         if (camera != cam || shakenCamera != null) return;
 
+        // 计算震动进度，到期时停止
         float progress = (float)(Time.unscaledTimeAsDouble - hitShakeStartedAt) / HitShakeDuration;
         if (progress >= 1f) {
             StopHitShake();
             return;
         }
 
-        // Keep the shake outside gameplay updates so mouse aiming and follow use the base pose.
+        // 仅在渲染时偏移相机，让瞄准和跟随继续使用原位姿
         float phase = progress * 4f * Mathf.PI;
         float strength = HitShakeAmplitude * (1f - progress);
         Vector3 displacement = new Vector3(Mathf.Cos(phase), 0.5f * Mathf.Sin(phase), 0f) * strength;
@@ -78,11 +79,13 @@ public class CameraComp : NetworkBehaviour
         shakenCamera.position += shakenCamera.TransformDirection(displacement);
     }
 
+    // 主相机渲染结束后恢复原位置
     private void EndCameraRendering(ScriptableRenderContext context, Camera camera) {
         if (camera == cam)
             RestoreCameraPosition();
     }
 
+    // 移除震动回调并恢复相机位置
     private void StopHitShake() {
         if (!hitShakeActive) return;
 
@@ -92,44 +95,49 @@ public class CameraComp : NetworkBehaviour
         RestoreCameraPosition();
     }
 
+    // 还原渲染前保存的相机位置
     private void RestoreCameraPosition() {
         if (shakenCamera != null)
             shakenCamera.position = unshakenPosition;
         shakenCamera = null;
     }
 
+    // 每帧更新本地相机的跟随位置
     private void Update()
     {
-        // 只有本机拥有的角色驱动相机；远端角色、专用服务器上的角色都跳过
+        // 仅本地拥有的玩家更新相机
         if (!isOwned) return;
         if (!TryGetCamera()) return;
 
+        // 按配置直接或平滑跟随角色
         Vector3 desired = transform.position + offset;
         camTransform.position = followSmoothTime > 0f
             ? Vector3.SmoothDamp(camTransform.position, desired, ref followVelocity, followSmoothTime)
             : desired;
     }
 
-    // 运行时在 Inspector 里改 offset 立刻刷新俯视角。
-    // NetworkBehaviour 自己也声明了 OnValidate（校验 NetworkIdentity），必须 override 并调用 base。
+    // 调整检查器参数时刷新相机朝向
     protected override void OnValidate()
     {
         base.OnValidate();
         if (camTransform != null) RefreshRotation();
     }
 
+    // 获取并缓存场景主相机
     bool TryGetCamera()
     {
-        if (cam != null) return true;      // Unity 的 == null 对已销毁对象也成立，所以换场景后会重新找
+        // 相机已销毁或换场景时重新查找
+        if (cam != null) return true;
 
-        cam = Camera.main;                 // 无头专用服务器上没有相机，这里会一直返回 false
+        cam = Camera.main;
         if (cam == null) return false;
 
         camTransform = cam.transform;
-        RefreshRotation();                 // 刚找到就把朝向摆成固定的俯视角
+        RefreshRotation();
         return true;
     }
 
+    // 立即将相机摆到角色的跟随位置
     void SnapToTarget()
     {
         followVelocity = Vector3.zero;
@@ -137,17 +145,15 @@ public class CameraComp : NetworkBehaviour
         RefreshRotation();
     }
 
-    /// <summary>
-    /// 朝向是 offset 的函数、和角色无关，所以不用每帧算：找到相机 / 改 offset / 重新跟随时刷新一次就够。
-    /// </summary>
+    // 按固定偏移设置相机俯视角
     void RefreshRotation()
     {
-        Vector3 lookDir = -offset;         // 相机看向角色，视线方向就是偏移的反方向
+        Vector3 lookDir = -offset;
         if (lookDir.sqrMagnitude < 1e-6f) return;
 
         Vector3 flat = new Vector3(lookDir.x, 0f, lookDir.z);
 
-        // 正上方垂直俯视时视线与 world up 平行，LookRotation 会失效，改用世界前方当 up
+        // 垂直俯视时用世界前方作为相机的上方向
         camTransform.rotation = flat.sqrMagnitude < 1e-4f
             ? Quaternion.LookRotation(lookDir.normalized, Vector3.forward)
             : Quaternion.LookRotation(lookDir.normalized, Vector3.up);

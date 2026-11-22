@@ -1,3 +1,4 @@
+// 保存角色外观配置并按角色 ID 查找
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,8 +6,11 @@ using UnityEngine;
 [Serializable]
 public sealed class HeroDefinition
 {
+    // 用于查找和同步外观的角色 ID
     [SerializeField] string roleId;
+    // 角色外观预制体
     [SerializeField] GameObject visualPrefab;
+    // 角色动画使用的骨骼映射
     [SerializeField] Avatar avatar;
 
     public string RoleId => roleId;
@@ -17,10 +21,13 @@ public sealed class HeroDefinition
 [CreateAssetMenu(menuName = "FPSGame/Hero Catalog", fileName = "HeroCatalog")]
 public sealed class HeroCatalog : ScriptableObject
 {
+    // 可供角色装配的外观配置
     [SerializeField] List<HeroDefinition> heroes = new List<HeroDefinition>();
 
+    // 按角色 ID 查找对应配置
     public bool TryGetHero(string roleId, out HeroDefinition definition)
     {
+        // ID 有效时逐项进行精确匹配
         if (!string.IsNullOrWhiteSpace(roleId))
         {
             for (int i = 0; i < heroes.Count; i++)

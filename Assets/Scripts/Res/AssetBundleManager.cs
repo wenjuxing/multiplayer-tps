@@ -1,57 +1,53 @@
+// 管理资源包的加载、依赖和引用释放
 using System.Threading.Tasks;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-//AB包数据结构
+// 保存单个资源包的加载任务、引用数和依赖
 public class BundleHandle
 {
     public string Name;
     public AssetBundle bundle;
+    // 记录当前持有资源包的引用数
     public int RefCount;
-    //共享点
+    // 同名资源包的加载请求共用这个任务
     public readonly TaskCompletionSource<AssetBundle> Tcs=new();
     public Task<AssetBundle>Task =>Tcs.Task;
-    //存储依赖包名
+    // 记录加载该包时持有的依赖包
     public string[] Deps=System.Array.Empty<string>();
-    //引用计数为0但还没加载完，完成后马上卸载
+    // 标记加载完成后立即卸载
     public bool PendingUnLoad;
 }
 
-/// <summary>
-/// AB包管理器
-/// </summary>
 public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
 {
-    //缓存主包
+    // 缓存存放依赖清单的主包
     private AssetBundle mainAB = null;
-    //缓存主包中的依赖文件
+    // 缓存资源包依赖清单
     private AssetBundleManifest manifest = null;
-    //★新增注释：AB包目录改为 StreamingAssets/PC/，与 BuildAssetBundles 的输出目录保持一致
-    //缓存存储路径
+    // 资源包目录需与编辑器构建输出一致
     private string PathUrl => Application.streamingAssetsPath+"/"+MainABName+"/";
-    //缓存主包名字
-    //本项目只出 PC 端，AB 包统一放在 StreamingAssets/PC/（与 BuildAssetBundles 的输出目录一致）
+    // 主包名与资源包目录名保持一致
     private const string MainABName = "PC";
 
     #region 异步加载AB包资源
-    //保存正在加载的AB句柄,防止重复加载
+    // 保存已加载或正在加载的资源包记录
     private Dictionary<string,BundleHandle>_handles=new();
-    //正在加载数量
+    // 当前正在加载的资源包数
     private int _inFlight;
-    //是否有正在加载的AB包
     public bool HasInFlight=>_inFlight>0;
-    //加载AB包入口
 
-    //等待所有正在加载的资源加载完毕（切换场景/全量卸载前使用）
+    // 等待所有资源包结束加载
     public async Task WaitIdleAsync()
     {
         while(_inFlight>0)await Awaitable.NextFrameAsync();
     }
+    // 加载资源包并为调用方保留一个引用
     public Task<AssetBundle> LoadBundleAsync(string abName)
     {
-        //防止包名为空或异常
+        // 检查包名，主包只由管理器内部加载
         if (string.IsNullOrEmpty(abName))
         {
             throw new System.ArgumentException("abName 不能为空", nameof(abName));
@@ -61,105 +57,99 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
             throw new System.InvalidOperationException($"主包 {MainABName} 由管理器内部加载，请勿手动加载");
         }
 
-        //防止重复加载
+        // 同名资源包已在记录中时复用加载任务并增加引用
         if (_handles.TryGetValue(abName,out var exist))
         {
             exist.RefCount++;
             return exist.Task;
         }
 
+        // 为首次请求创建共享任务，并启动实际加载
         BundleHandle handle=new BundleHandle
         {
             Name=abName,
             RefCount=1
         };
-        //保存正在加载handle
         _handles.Add(abName,handle);
-        //正在加载资源计数
         _inFlight++;
-        //“_”表示不需要这个返回值
         _=OwnerLoadAsync(handle);
         return handle.Task;
     }
 
-    //★新增：取资源专用入口。包已就绪时直接复用句柄，不再增加引用计数，
-    //避免“取一次资源就加一次引用”；包不存在时才走LoadBundleAsync首次加载（记1次引用）
+    // 取用资源时复用现有任务，仅首次加载包时记录引用
     private Task<AssetBundle> EnsureBundleAsync(string abName)
     {
         if (_handles.TryGetValue(abName,out var exist))return exist.Task;
         return LoadBundleAsync(abName);
     }
 
-    //实际加载AB方法
+    // 加载依赖包和目标包，完成后通知等待的调用方
     private async Task OwnerLoadAsync(BundleHandle handle)
     {
-        //存储依赖包列表
+        // 记录此次已取得引用的依赖，用于失败时释放
         List<string> acquiredDeps=new();
         try
         {
-            //记录ab包的所有依赖关系
+            // 从主包清单读取目标包的依赖
             var mf=EnsureManifest();
             var deps=mf.GetAllDependencies(handle.Name);
             handle.Deps=deps;
 
-            //加载依赖包
+            // 先并行加载所有依赖包，再加载目标包
             if (deps.Length>0)
             {
-                //记录每个依赖包加载任务
                 Task<AssetBundle>[]depTask=new Task<AssetBundle>[deps.Length];
                 for (int i=0;i<deps.Length;i++)
                 {
                     acquiredDeps.Add(deps[i]);
                     depTask[i]=LoadBundleAsync(deps[i]);
                 }
-                //挂起当前方法等待所有任务执行完毕
                 await Task.WhenAll(depTask);
             }
 
-            //加载ab包
+            // 从文件异步加载目标包
             var req=AssetBundle.LoadFromFileAsync(PathUrl+handle.Name);
             await req;
             handle.bundle=req.assetBundle;
 
-            //异常处理
+            // 读不到资源包时报告加载失败
             if (handle.bundle==null)
             {
                 throw new System.IO.IOException($"AB 加载失败：{handle.Name}");
             }
 
-            //标记任务完成
+            // 将目标包交给所有等待的调用方
             handle.Tcs.TrySetResult(handle.bundle);
         }
         catch (System.Exception e)
         {
-            //移除加载记录
+            // 清理失败记录并归还已取得的依赖引用
             _handles.Remove(handle.Name);
 
-            //移除增加的引用计数
             for (int i=0;i<acquiredDeps.Count;i++)
             {
                 Release(acquiredDeps[i]);
             }
             Debug.LogError($"[AB] 加载失败：{handle.Name}\n{e}");
 
-            //标记任务失败
+            // 将加载失败传给等待的调用方
             handle.Tcs.TrySetException(e);
         }
         finally
         {
             _inFlight--;
-            //引用计数为0，卸载ab包
+            // 加载期间已请求卸载时，在加载成功后执行
             if (handle.PendingUnLoad && handle.Tcs.Task.Status == TaskStatus.RanToCompletion)
                 DoUnload(handle);
         }
     }
-    //加载依赖文件
+    // 首次使用时从主包读取依赖清单
     private AssetBundleManifest EnsureManifest()
     {
         if (manifest==null)
         {
             mainAB=AssetBundle.LoadFromFile(PathUrl+MainABName);
-            //★新增：主包缺失时给出明确报错，避免下一行空引用
+            // 主包不存在时报告具体路径
             if (mainAB==null)
             {
                 throw new System.IO.IOException($"主包加载失败：{PathUrl+MainABName}");
@@ -168,25 +158,25 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
         }
         return manifest;
     }
-    //释放资源
+    // 归还一个资源包引用，最后一个引用归还后安排卸载
     public void Release(string abName)
     {
-        //ab包包名为空或不在处理字典中
+        // 跳过空包名或未登记的资源包
         if(string.IsNullOrEmpty(abName))return;
         if(!_handles.TryGetValue(abName,out var h))return;
 
-        //减少引用计数，如果减少之后为0则卸载
+        // 仍有调用方持有引用时继续保留资源包
         if(h.RefCount>0)h.RefCount--;
         if(h.RefCount>0)return;
 
-        //有任务正在加载
+        // 正在加载时把卸载延后到加载完成
         if (!h.Tcs.Task.IsCompleted)
         {
             h.PendingUnLoad=true;
             return;
         }
 
-        //
+        // 加载失败或取消时清除无效记录
         if (h.Tcs.Task.IsFaulted||h.Tcs.Task.IsCanceled)
         {
             _handles.Remove(abName);
@@ -194,19 +184,19 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
         }
         DoUnload(h);
     }
-    //卸载资源
+    // 卸载资源包并归还依赖包引用
     public void DoUnload(BundleHandle handle)
     {
-        //从缓存中移除
+        // 先移除资源包的缓存记录
         _handles.Remove(handle.Name);
 
-        //卸载ab包
+        // 卸载包本身，保留已加载的资源对象
         var deps=handle.Deps;
         handle.Deps=System.Array.Empty<string>();
-        handle.bundle?.Unload(false);//false：只卸载没有被使用的，保留场景中正常使用的ab包
+        handle.bundle?.Unload(false);
         handle.bundle=null;
 
-        //释放依赖包的引用计数
+        // 逐个归还依赖包引用
         if(deps==null)return;
         for (int i=0;i<deps.Length;i++)
         {
@@ -217,13 +207,10 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
 
     #region 资源取用（新增）
 
-    /// <summary>
-    /// 异步加载资源（不实例化；GameObject请用InstantiateAsync）
-    /// 注意：首次取资源会把包常驻（引用计数记1），由Release或UnLoadAll释放
-    /// </summary>
+    // 异步加载指定类型的资源
     public async Task<T> LoadAssetAsync<T>(string abName,string resName)where T:Object
     {
-        //★新增：走EnsureBundleAsync，包已就绪就复用，不再加引用计数
+        // 复用现有包，首次取用时保留一个引用
         var bundle=await EnsureBundleAsync(abName);
         var req=bundle.LoadAssetAsync<T>(resName);
         await req;
@@ -232,9 +219,7 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
         return asset;
     }
 
-    /// <summary>
-    /// 异步加载资源 指定类型
-    /// </summary>
+    // 按传入的类型异步加载资源
     public async Task<Object> LoadAssetAsync(string abName,string resName,System.Type type)
     {
         var bundle=await EnsureBundleAsync(abName);
@@ -244,49 +229,38 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
         return req.asset;
     }
 
-    /// <summary>
-    /// 异步加载并实例化GameObject（Prefab）
-    /// </summary>
+    // 异步加载预制体并实例化到指定父节点
     public async Task<GameObject> InstantiateAsync(string abName,string resName,Transform parent=null)
     {
         var prefab=await LoadAssetAsync<GameObject>(abName,resName);
         return prefab==null?null:Instantiate(prefab,parent);
     }
 
-    /// <summary>
-    /// 同步取资源：仅当包已加载完成时可用（战斗内/对象池）
-    /// 包未常驻会报错并返回null，请先await LoadAssetAsync预载
-    /// </summary>
+    // 从已加载完成的资源包同步读取资源
     public T LoadAsset<T>(string abName,string resName)where T:Object
     {
         var bundle=GetResidentBundle(abName);
         return bundle==null?null:bundle.LoadAsset<T>(resName);
     }
 
-    /// <summary>
-    /// 同步取资源 指定类型
-    /// </summary>
+    // 从已加载完成的资源包按指定类型读取资源
     public Object LoadAsset(string abName,string resName,System.Type type)
     {
         var bundle=GetResidentBundle(abName);
         return bundle==null?null:bundle.LoadAsset(resName,type);
     }
 
-    /// <summary>
-    /// 同步实例化GameObject（战斗内/对象池）
-    /// </summary>
+    // 从已加载完成的资源包同步实例化预制体
     public GameObject InstantiatePrefab(string abName,string resName,Transform parent=null)
     {
         var prefab=LoadAsset<GameObject>(abName,resName);
         return prefab==null?null:Instantiate(prefab,parent);
     }
 
-    /// <summary>
-    /// 包是否已加载完成
-    /// </summary>
+    // 判断资源包是否已加载并保存在内存中
     public bool IsResident(string abName)=>_handles.TryGetValue(abName,out var h)&&h.bundle!=null;
 
-    //取常驻包，未常驻时报错返回null
+    // 查找已加载的资源包，缺失时记录预加载提示
     private AssetBundle GetResidentBundle(string abName)
     {
         if(!string.IsNullOrEmpty(abName)&&_handles.TryGetValue(abName,out var h)&&h.bundle!=null)
@@ -298,17 +272,14 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
 
     #region AB包资源卸载
 
-    /// <summary>
-    /// 卸载单个包
-    /// </summary>
-    /// <param name="abName"></param>
+    // 将指定资源包的引用清零并卸载
     public void UnLoad(string abName)
     {
         if(!_handles.TryGetValue(abName,out var h))return;
 
-        //★新增：强制卸载，先把引用计数清零（忽略还有谁在用）
+        // 强制清空引用计数
         h.RefCount=0;
-        //★新增：包还在加载中，先标记，等OwnerLoadAsync加载完成后自己卸载
+        // 正在加载时标记为完成后卸载
         if (!h.Tcs.Task.IsCompleted)
         {
             h.PendingUnLoad=true;
@@ -317,28 +288,25 @@ public class AssetBundleManager:SingletonAutoMono<AssetBundleManager>
         DoUnload(h);
     }
 
-    /// <summary>
-    /// 卸载所有包
-    /// </summary>
+    // 卸载全部资源包并清空管理记录
     public void UnLoadAll()
     {
-        //★新增：有包在加载中时拒绝执行，否则加载完成的包会变成无人管理的野包
+        // 等待中的加载任务结束后才能卸载全部包
         if (_inFlight>0)
         {
             Debug.LogWarning($"[AB] 还有 {_inFlight} 个包在加载中，请改用 await UnLoadAllAsync()");
             return;
         }
 
+        // 卸载资源包本身并保留已加载的资源对象
         AssetBundle.UnloadAllAssetBundles(false);
-        //★修改：原 ABDict.Clear() 改为清空句柄字典
+        // 清空资源包记录和主包缓存
         _handles.Clear();
         mainAB = null;
         manifest = null;
     }
 
-    /// <summary>
-    /// 全量卸载：先等在途加载结束（新增）
-    /// </summary>
+    // 等待所有加载任务完成后卸载全部资源包
     public async Task UnLoadAllAsync()
     {
         await WaitIdleAsync();

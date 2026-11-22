@@ -1,3 +1,4 @@
+// 提供客户端和服务端出包、地址切换与构建自检
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,23 +10,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Debug = UnityEngine.Debug;
 
-/// <summary>
-/// FPSGame-Y1 出包工具（Editor 菜单 Tools/FPSGame-Y1，快捷键 Ctrl+Shift+B 打开面板）。
-///
-/// 提供四件事：
-///   1. 客户端打包      Build/WindowsClient/FPSGame-Y1.exe          (StandaloneWindows64 / Player)
-///   2. 服务端打包      Build/LinuxServer/FPSGame-Y1.x86_64         (StandaloneLinux64 / Server, Mono)
-///   3. 双端同时出包    Windows 客户端 + Linux 服务端，一次点完，自动切平台
-///   4. 切换服务端地址  本地 127.0.0.1 / 真实 43.142.103.57，直接改场景里的 NetworkManager
-///
-/// 设计要点：
-///   - 地址写在场景里，构建时自动被带进包里，所以「出包前先切环境」是必须的顺序，
-///     面板里的「先切环境再出包」勾选框就是为这一步准备的。
-///   - 出包前自动检测残留进程（否则 Unity 报「文件正在被使用」），并给出一键结束。
-/// </summary>
 public class FPSGameBuildWindow : EditorWindow
 {
-    // ---------------- 路径 / 平台常量（与项目文档「出包与发布流程.md」保持一致） ----------------
+    // 构建输出路径和启动场景，与出包文档保持一致
 
     public const string ProjectRoot = ".";
     public const string ServerOutputDir = "Build/LinuxServer";
@@ -34,9 +21,9 @@ public class FPSGameBuildWindow : EditorWindow
     public const string ClientExeName = "FPSGame-Y1.exe";
     public const string BootScenePath = "Assets/Scenes/TestScene.unity";
 
-    // ---------------- EditorPrefs ----------------
+    // 保存出包面板选项和环境选择的编辑器配置键
 
-    private const string PrefEnvironment = "FPSGame_Y1.BuildEnv";          // last / production
+    private const string PrefEnvironment = "FPSGame_Y1.BuildEnv";
     private const string PrefSwitchBeforeBuild = "FPSGame_Y1.SwitchBeforeBuild";
     private const string PrefDevClient = "FPSGame_Y1.DevClient";
     private const string PrefOpenFolder = "FPSGame_Y1.OpenFolder";
@@ -47,18 +34,16 @@ public class FPSGameBuildWindow : EditorWindow
 
     private static readonly Vector2 WindowMinSize = new Vector2(430f, 640f);
 
-    // ---------------- 运行期状态 ----------------
 
     private Vector2 _scroll;
 
-    // 静态：静态的 FinishShared 要写、面板重绘后还要能看到上一次结果
+    // 保存上次构建用时和结果供面板显示
     private static double _lastBuildSeconds;
     private static string _lastBuildSummary = "";
 
-    // =====================================================================================
     //  菜单项
-    // =====================================================================================
 
+    // 打开出包面板
     [MenuItem("Tools/FPSGame-Y1/出包面板 %#b", false, 1)]
     public static void OpenWindow()
     {
@@ -67,36 +52,42 @@ public class FPSGameBuildWindow : EditorWindow
         w.Show();
     }
 
+    // 用默认配置构建 Windows 客户端
     [MenuItem("Tools/FPSGame-Y1/打包客户端 (Windows) %#c", false, 20)]
     public static void MenuBuildClient()
     {
         BuildClient(new BuildConfig());
     }
 
+    // 用默认配置构建 Linux 服务端
     [MenuItem("Tools/FPSGame-Y1/打包服务端 (Linux Server) %#s", false, 21)]
     public static void MenuBuildServer()
     {
         BuildServer(new BuildConfig());
     }
 
+    // 用默认配置依次构建服务端和客户端
     [MenuItem("Tools/FPSGame-Y1/双端同时出包 (客户端+服务端) %#d", false, 22)]
     public static void MenuBuildBoth()
     {
         BuildBoth(new BuildConfig());
     }
 
+    // 将场景服务器地址切到本地
     [MenuItem("Tools/FPSGame-Y1/切换到本地服务地址 (127.0.0.1)", false, 40)]
     public static void MenuSwitchLocal()
     {
         SwitchEnvironment(NetworkAddressConfig.LocalAddress, true);
     }
 
+    // 将场景服务器地址切到生产环境
     [MenuItem("Tools/FPSGame-Y1/切换到真实服务地址 (43.142.103.57)", false, 41)]
     public static void MenuSwitchProduction()
     {
         SwitchEnvironment(NetworkAddressConfig.ProductionAddress, true);
     }
 
+    // 创建并打开出包输出目录
     [MenuItem("Tools/FPSGame-Y1/打开出包输出目录", false, 60)]
     public static void MenuOpenBuildDir()
     {
@@ -105,31 +96,27 @@ public class FPSGameBuildWindow : EditorWindow
         EditorUtility.RevealInFinder(dir);
     }
 
-    // =====================================================================================
     //  出包参数
-    // =====================================================================================
 
-    /// <summary>一次出包要用的参数集合。</summary>
+    // 保存一次构建需要的选项
     public class BuildConfig
     {
-        /// <summary>勾选 Development Build（排障期用；正式包不要勾）。</summary>
+        // 是否生成调试用的开发构建
         public bool Development;
 
-        /// <summary>是否在出包前先把环境切到某个地址；null 表示不动。</summary>
+        // 构建前要切换的服务器地址，空值时沿用当前地址
         public string SwitchAddressBeforeBuild;
 
-        /// <summary>出包完成后打开输出目录。</summary>
+        // 构建成功后是否打开输出目录
         public bool RevealAfterBuild;
 
-        /// <summary>允许自动切换构建平台（会触发一次资源重新导入）。</summary>
+        // 是否允许自动切换平台并重新导入资源
         public bool AllowSwitchPlatform = true;
     }
 
-    // =====================================================================================
     //  出包主流程
-    // =====================================================================================
 
-    /// <summary>只出 Windows 客户端。</summary>
+    // 构建 Windows 客户端
     public static bool BuildClient(BuildConfig cfg)
     {
         return RunSingle("Windows 客户端", cfg,
@@ -137,7 +124,7 @@ public class FPSGameBuildWindow : EditorWindow
             ClientOutputDir, ClientExeName);
     }
 
-    /// <summary>只出 Linux 服务端。</summary>
+    // 构建 Linux 专用服务端
     public static bool BuildServer(BuildConfig cfg)
     {
         return RunSingle("Linux 服务端", cfg,
@@ -145,7 +132,7 @@ public class FPSGameBuildWindow : EditorWindow
             ServerOutputDir, ServerExeName);
     }
 
-    /// <summary>先服务端、后客户端，一次点完。</summary>
+    // 一次构建 Linux 服务端和 Windows 客户端
     public static bool BuildBoth(BuildConfig cfg)
     {
         if (!PrepareShared(cfg, "双端同时出包"))
@@ -153,7 +140,7 @@ public class FPSGameBuildWindow : EditorWindow
 
         double t0 = EditorApplication.timeSinceStartup;
 
-        // 服务端在前：Linux Server 是发布必需项，客户端可以稍后补。
+        // 优先构建服务端，失败时跳过客户端
         if (!RunSingleCore("Linux 服务端", cfg, BuildTarget.StandaloneLinux64,
                 StandaloneBuildSubtarget.Server, ServerOutputDir, ServerExeName))
         {
@@ -161,6 +148,7 @@ public class FPSGameBuildWindow : EditorWindow
             return false;
         }
 
+        // 服务端通过后构建 Windows 客户端
         if (!RunSingleCore("Windows 客户端", cfg, BuildTarget.StandaloneWindows64,
                 StandaloneBuildSubtarget.Player, ClientOutputDir, ClientExeName))
         {
@@ -172,22 +160,26 @@ public class FPSGameBuildWindow : EditorWindow
         return true;
     }
 
-    // ---- 单个目标的包装：负责公共前置检查与结果汇总 ----
+    // 执行单个构建目标的检查、出包和汇总
 
     private static bool RunSingle(string label, BuildConfig cfg,
         BuildTarget target, StandaloneBuildSubtarget subtarget, string outputDir, string exeName)
     {
+        // 先执行共同的构建前检查
         if (!PrepareShared(cfg, label))
             return false;
 
+        // 构建当前目标并汇总结果
         double t0 = EditorApplication.timeSinceStartup;
         bool ok = RunSingleCore(label, cfg, target, subtarget, outputDir, exeName);
         FinishShared(t0, ok ? label + " 出包完成。" : label + " 出包失败。", ok, cfg);
         return ok;
     }
 
+    // 检查编辑器、场景和输出文件占用，再按配置切换地址
     private static bool PrepareShared(BuildConfig cfg, string label)
     {
+        // 播放、编译或导入期间跳过构建
         if (EditorApplication.isPlayingOrWillChangePlaymode)
         {
             EditorUtility.DisplayDialog("无法出包",
@@ -201,7 +193,7 @@ public class FPSGameBuildWindow : EditorWindow
             return false;
         }
 
-        // 场景列表检查：项目只有 TestScene，序号 0
+        // 确认至少有一个场景启用了构建
         if (GetEnabledScenes().Length == 0)
         {
             EditorUtility.DisplayDialog("无法出包",
@@ -209,7 +201,7 @@ public class FPSGameBuildWindow : EditorWindow
             return false;
         }
 
-        // 残留进程检查：文件被占用是最高频的出包失败原因
+        // 检查残留进程，用户确认后结束以解除占用
         string[] running = GetRunningGameProcessNames();
         if (running.Length > 0)
         {
@@ -225,7 +217,7 @@ public class FPSGameBuildWindow : EditorWindow
             KillGameProcesses();
         }
 
-        // 出包前切换环境
+        // 按构建配置切换服务器地址，失败时中止构建
         if (!string.IsNullOrEmpty(cfg.SwitchAddressBeforeBuild))
         {
             if (!SwitchEnvironment(cfg.SwitchAddressBeforeBuild, false))
@@ -239,11 +231,13 @@ public class FPSGameBuildWindow : EditorWindow
         return true;
     }
 
+    // 记录构建结果并刷新面板
     private static void FinishShared(double t0, string message, bool ok, BuildConfig cfg)
     {
-        _lastBuildSeconds = EditorApplication.timeSinceStartup - t0; // 静态字段，窗口在时也看得到
+        _lastBuildSeconds = EditorApplication.timeSinceStartup - t0;
         _lastBuildSummary = string.Format("{0} 用时 {1:F1}s", message, _lastBuildSeconds);
 
+        // 构建成功时刷新资源，按配置打开输出目录
         if (ok)
         {
             AssetDatabase.Refresh();
@@ -261,20 +255,23 @@ public class FPSGameBuildWindow : EditorWindow
             Debug.LogError("[出包] " + _lastBuildSummary);
         }
 
+        // 通知已打开的出包面板刷新结果
         FPSGameBuildWindow[] windows = Resources.FindObjectsOfTypeAll<FPSGameBuildWindow>();
         for (int i = 0; i < windows.Length; i++)
             windows[i].Repaint();
     }
 
-    // ---- 真正调用 BuildPipeline 的地方 ----
+    // 按指定平台构建单个目标并读取构建报告
 
     private static bool RunSingleCore(string label, BuildConfig cfg,
         BuildTarget target, StandaloneBuildSubtarget subtarget,
         string outputDir, string exeName)
     {
+        // 确保构建平台和子目标正确
         if (!EnsureBuildTarget(target, subtarget, cfg.AllowSwitchPlatform))
             return false;
 
+        // 准备输出路径、场景列表和构建参数
         string absDir = ToAbsolute(outputDir);
         Directory.CreateDirectory(absDir);
         string location = Path.Combine(absDir, exeName).Replace('\\', '/');
@@ -289,6 +286,7 @@ public class FPSGameBuildWindow : EditorWindow
             options = cfg.Development ? BuildOptions.Development : BuildOptions.None,
         };
 
+        // 执行构建并在结束后关闭进度条
         BuildReport report;
         try
         {
@@ -300,6 +298,7 @@ public class FPSGameBuildWindow : EditorWindow
             EditorUtility.ClearProgressBar();
         }
 
+        // 根据构建报告记录错误或成功信息
         if (report == null)
         {
             Debug.LogError("[出包] " + label + "：BuildPipeline 返回 null（目标平台模块可能没装）。");
@@ -323,9 +322,10 @@ public class FPSGameBuildWindow : EditorWindow
         return true;
     }
 
-    /// <summary>必要时切换构建平台；Standalone 之间还要设置 Server/Player 子目标。</summary>
+    // 按需切换构建平台并设置客户端或服务端子目标
     private static bool EnsureBuildTarget(BuildTarget target, StandaloneBuildSubtarget subtarget, bool allowSwitch)
     {
+        // 禁止切平台时检查当前平台是否匹配
         if (!allowSwitch && EditorUserBuildSettings.activeBuildTarget != target)
         {
             Debug.LogError(string.Format(
@@ -334,7 +334,7 @@ public class FPSGameBuildWindow : EditorWindow
             return false;
         }
 
-        // StandaloneLinux64 / StandaloneWindows64 之间也需要切子目标，否则会出成普通客户端
+        // 为桌面平台设置客户端或专用服务端子目标
         if (IsStandalone(target))
             EditorUserBuildSettings.standaloneBuildSubtarget = subtarget;
 
@@ -344,6 +344,7 @@ public class FPSGameBuildWindow : EditorWindow
         if (!allowSwitch)
             return false;
 
+        // 切换平台并在结束后关闭进度条
         string from = EditorUserBuildSettings.activeBuildTarget.ToString();
         Debug.Log(string.Format(
             "[出包] 切换构建平台 {0} → {1}（首次切换会重新导入资源，可能要几分钟）", from, target));
@@ -368,13 +369,14 @@ public class FPSGameBuildWindow : EditorWindow
             return false;
         }
 
-        // 切完平台要再设一次子目标（切换过程会把它重置）
+        // 平台切换成功后重新设置被重置的子目标
         if (IsStandalone(target))
             EditorUserBuildSettings.standaloneBuildSubtarget = subtarget;
 
         return true;
     }
 
+    // 判断是否为桌面构建平台
     private static bool IsStandalone(BuildTarget t)
     {
         return t == BuildTarget.StandaloneWindows64
@@ -383,6 +385,7 @@ public class FPSGameBuildWindow : EditorWindow
             || t == BuildTarget.StandaloneOSX;
     }
 
+    // 读取构建设置中已启用的场景路径
     private static string[] GetEnabledScenes()
     {
         List<string> list = new List<string>();
@@ -395,19 +398,14 @@ public class FPSGameBuildWindow : EditorWindow
         return list.ToArray();
     }
 
-    // =====================================================================================
     //  服务端地址切换（本地 / 真实）
-    // =====================================================================================
 
-    /// <summary>
-    /// 把场景里 NetworkManager.networkAddress 改成指定地址。
-    /// 返回 false 表示场景里找不到 NetworkManager（或场景没打开）。
-    /// </summary>
+    // 将当前构建场景的网络管理器改为指定服务器地址
     public static bool SwitchEnvironment(string address, bool verbose)
     {
         Scene scene = SceneManager.GetActiveScene();
 
-        // 需要时自动打开 TestScene（其它场景里通常没有 NetworkManager）
+        // 必要时询问是否保存改动，再打开启动场景
         if (scene.path != BootScenePath && File.Exists(ToAbsolute(BootScenePath)) && !EditorApplication.isPlaying)
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
@@ -416,6 +414,7 @@ public class FPSGameBuildWindow : EditorWindow
             scene = EditorSceneManager.OpenScene(BootScenePath, OpenSceneMode.Single);
         }
 
+        // 查找场景中所有网络管理器
         Mirror.NetworkManager[] managers = FindNetworkManagers(scene);
         if (managers.Length == 0)
         {
@@ -428,6 +427,7 @@ public class FPSGameBuildWindow : EditorWindow
         if (managers.Length > 1)
             Debug.LogWarning("[环境] 场景里有 " + managers.Length + " 个 NetworkManager，全部一起改。");
 
+        // 更新地址并记录编辑器撤销操作
         for (int i = 0; i < managers.Length; i++)
         {
             Mirror.NetworkManager nm = managers[i];
@@ -450,16 +450,14 @@ public class FPSGameBuildWindow : EditorWindow
 
         EditorSceneManager.MarkSceneDirty(scene);
 
-        // 注意：这里刻意不自动保存场景，避免把用户其它未保存的改动一起写盘。
-        // 保存由用户在 Unity 里 Ctrl+S 完成；批处理模式下可用 SaveScene(s) 显式保存。
-        // 只有用户主动切环境（verbose=true）才弹提示；出包前自动切换时不打扰。
+        // 标记场景待保存，手动切换时提醒用户保存
         if (verbose && !Application.isBatchMode && scene.isDirty)
             EditorUtility.DisplayDialog("地址已切换",
                 "已切到 " + address + "，但场景还没保存。\n\n" +
                 "请在 Unity 里按 Ctrl+S 保存场景（或菜单 File → Save），否则出包时带的还是旧地址。",
                 "知道了");
 
-        // 记住选择，方便「恢复上次环境」
+        // 保存本次选择供下次恢复使用
         string envKey = (address == NetworkAddressConfig.LocalAddress) ? EnvLocal : EnvProduction;
         EditorPrefs.SetString(PrefEnvironment, envKey);
 
@@ -475,24 +473,27 @@ public class FPSGameBuildWindow : EditorWindow
         return true;
     }
 
-    /// <summary>把上次选择的环境再应用一次（编辑器重启 / 拉取别人改动后用）。</summary>
+    // 重新应用上次选择的服务器地址
     public static void ReapplySavedEnvironment()
     {
         string addr = GetSavedEnvironmentAddress();
         SwitchEnvironment(addr, true);
     }
 
+    // 根据上次选择读取服务器地址
     private static string GetSavedEnvironmentAddress()
     {
         string envKey = EditorPrefs.GetString(PrefEnvironment, EnvProduction);
         return envKey == EnvLocal ? NetworkAddressConfig.LocalAddress : NetworkAddressConfig.ProductionAddress;
     }
 
+    // 取得环境在面板上的显示名称
     private static string EnvironmentDisplayName(string envKey)
     {
         return envKey == EnvLocal ? "本地" : "真实";
     }
 
+    // 查找指定场景内的网络管理器，包括未启用对象
     private static Mirror.NetworkManager[] FindNetworkManagers(Scene scene)
     {
         List<Mirror.NetworkManager> list = new List<Mirror.NetworkManager>();
@@ -502,20 +503,20 @@ public class FPSGameBuildWindow : EditorWindow
         return list.ToArray();
     }
 
+    // 优先在当前场景查找网络管理器
     private static Mirror.NetworkManager FindAnyNetworkManager()
     {
         Mirror.NetworkManager[] inScene = FindNetworkManagers(SceneManager.GetActiveScene());
         if (inScene.Length > 0)
             return inScene[0];
 
-        // 场景没打开也要能显示当前值（Include 保证和旧的 FindObjectOfType 一样能看到未激活对象）
+        // 当前场景找不到时扩大查找范围，包括未启用对象
         return UnityEngine.Object.FindAnyObjectByType<Mirror.NetworkManager>(FindObjectsInactive.Include);
     }
 
-    // =====================================================================================
     //  进程占用检测
-    // =====================================================================================
 
+    // 统计运行中的游戏进程名称和数量
     private static string[] GetRunningGameProcessNames()
     {
         List<string> names = new List<string>();
@@ -531,13 +532,14 @@ public class FPSGameBuildWindow : EditorWindow
             }
             catch (Exception)
             {
-                // 忽略：拿不到进程列表不影响出包主流程
+                // 进程查询失败时继续检查其他进程名称
             }
         }
 
         return names.ToArray();
     }
 
+    // 结束检测到的游戏进程以解除文件占用
     private static void KillGameProcesses()
     {
         string[] candidates = { "FPSGame-Y1", "FPSGame_Y1" };
@@ -559,19 +561,20 @@ public class FPSGameBuildWindow : EditorWindow
         }
     }
 
-    // =====================================================================================
     //  面板 UI
-    // =====================================================================================
 
+    // 设定出包面板的最小尺寸
     private void OnEnable()
     {
         minSize = WindowMinSize;
     }
 
+    // 绘制出包面板的可滚动内容
     private void OnGUI()
     {
         _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
+        // 绘制地址、出包、运行时覆盖和自检区
         DrawEnvironmentSection();
         EditorGUILayout.Space(8);
 
@@ -586,12 +589,14 @@ public class FPSGameBuildWindow : EditorWindow
         EditorGUILayout.EndScrollView();
     }
 
+    // 显示当前服务器地址并提供切换操作
     private void DrawEnvironmentSection()
     {
         EditorGUILayout.LabelField("① 服务端地址", EditorStyles.boldLabel);
 
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
+            // 读取场景地址和上次选择的环境
             Mirror.NetworkManager nm = FindAnyNetworkManager();
             string current = nm != null ? nm.networkAddress : "(场景里没有 NetworkManager)";
 
@@ -603,6 +608,7 @@ public class FPSGameBuildWindow : EditorWindow
 
             EditorGUILayout.Space(4);
 
+            // 提供本地和生产环境的快捷切换
             using (new EditorGUILayout.HorizontalScope())
             {
                 Color old = GUI.backgroundColor;
@@ -624,6 +630,7 @@ public class FPSGameBuildWindow : EditorWindow
                 GUI.backgroundColor = old;
             }
 
+            // 提供自定义地址和恢复上次环境的入口
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button("自定义地址…"))
@@ -641,6 +648,7 @@ public class FPSGameBuildWindow : EditorWindow
         }
     }
 
+    // 打开自定义地址对话框并应用确认结果
     private static void ShowCustomAddressDialog(string current)
     {
         string input = current;
@@ -651,12 +659,14 @@ public class FPSGameBuildWindow : EditorWindow
         });
     }
 
+    // 绘制出包配置、构建按钮和结果
     private void DrawBuildSection()
     {
         EditorGUILayout.LabelField("② 出包", EditorStyles.boldLabel);
 
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
+            // 读取和保存出包面板选项
             bool devClient = EditorPrefs.GetBool(PrefDevClient, true);
             bool devClientNew = EditorGUILayout.ToggleLeft(
                 "Development Build（排障用，正式包请取消勾选）", devClient);
@@ -696,6 +706,7 @@ public class FPSGameBuildWindow : EditorWindow
 
             EditorGUILayout.Space(6);
 
+            // 将当前面板选项整理为一次构建的参数
             BuildConfig cfg = new BuildConfig
             {
                 Development = devClientNew,
@@ -706,6 +717,7 @@ public class FPSGameBuildWindow : EditorWindow
                     : null,
             };
 
+            // 显示客户端、服务端和双端出包入口
             string clientPath = ClientOutputDir + "/" + ClientExeName;
             string serverPath = ServerOutputDir + "/" + ServerExeName;
 
@@ -727,6 +739,7 @@ public class FPSGameBuildWindow : EditorWindow
 
             EditorGUILayout.Space(4);
 
+            // 显示当前平台、场景列表和上次构建结果
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.LabelField("当前平台", EditorUserBuildSettings.activeBuildTarget.ToString());
@@ -739,12 +752,14 @@ public class FPSGameBuildWindow : EditorWindow
         }
     }
 
+    // 显示运行时服务器地址覆盖选项
     private void DrawRuntimeSection()
     {
         EditorGUILayout.LabelField("③ 运行时地址覆盖（不想重新出包时用）", EditorStyles.boldLabel);
 
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
+            // 显示配置路径和地址覆盖优先级
             EditorGUILayout.LabelField("本次会话的配置目录", EditorStyles.miniLabel);
             EditorGUILayout.SelectableLabel(NetworkAddressConfig.ConfigFilePath,
                 EditorStyles.textField, GUILayout.Height(18));
@@ -760,6 +775,7 @@ public class FPSGameBuildWindow : EditorWindow
 
             using (new EditorGUILayout.HorizontalScope())
             {
+                // 提供写入或删除本地地址配置的操作
                 if (GUILayout.Button("把当前场景地址写入配置文件"))
                 {
                     Mirror.NetworkManager nm = FindAnyNetworkManager();
@@ -771,6 +787,7 @@ public class FPSGameBuildWindow : EditorWindow
                     NetworkAddressConfig.ClearConfigFile();
             }
 
+            // 将本地测试命令复制到剪贴板
             if (GUILayout.Button("复制一条本地测试命令行"))
             {
                 EditorGUIUtility.systemCopyBuffer =
@@ -780,12 +797,14 @@ public class FPSGameBuildWindow : EditorWindow
         }
     }
 
+    // 绘制进程占用、输出目录和地址排查工具
     private void DrawDiagnosticsSection()
     {
         EditorGUILayout.LabelField("④ 自检", EditorStyles.boldLabel);
 
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
+            // 显示残留进程并提供结束操作
             string[] running = GetRunningGameProcessNames();
             if (running.Length == 0)
                 EditorGUILayout.LabelField("残留进程", "无");
@@ -799,6 +818,7 @@ public class FPSGameBuildWindow : EditorWindow
             if (GUILayout.Button("打开输出目录"))
                 MenuOpenBuildDir();
 
+            // 输出场景地址和运行时覆盖来源
             if (GUILayout.Button("打印当前生效地址（选中 NetworkManager 后看 Console）"))
             {
                 Mirror.NetworkManager nm = FindAnyNetworkManager();
@@ -815,10 +835,9 @@ public class FPSGameBuildWindow : EditorWindow
         }
     }
 
-    // =====================================================================================
     //  小工具
-    // =====================================================================================
 
+    // 刷新全部已打开的出包面板
     private static void RepaintAllWindows()
     {
         FPSGameBuildWindow[] windows = Resources.FindObjectsOfTypeAll<FPSGameBuildWindow>();
@@ -826,12 +845,14 @@ public class FPSGameBuildWindow : EditorWindow
             windows[i].Repaint();
     }
 
+    // 将项目相对路径转为完整路径
     private static string ToAbsolute(string relative)
     {
         string projectRoot = Directory.GetParent(Application.dataPath).FullName;
         return Path.GetFullPath(Path.Combine(projectRoot, relative));
     }
 
+    // 将构建大小转换为适合显示的单位
     private static string FormatBytes(ulong bytes)
     {
         double b = bytes;
@@ -842,12 +863,14 @@ public class FPSGameBuildWindow : EditorWindow
     }
 }
 
-/// <summary>自定义地址输入的小弹窗。</summary>
+// 自定义服务器地址输入窗口
 public class CustomAddressWindow : EditorWindow
 {
     private string _address = "";
+    // 保存地址确认后的回调
     private Action<string> _onConfirm;
 
+    // 打开自定义服务器地址窗口
     public static void Show(string initial, Action<string> onConfirm)
     {
         CustomAddressWindow w = CreateInstance<CustomAddressWindow>();
@@ -859,14 +882,17 @@ public class CustomAddressWindow : EditorWindow
         w.ShowUtility();
     }
 
+    // 绘制地址输入框和确认、取消按钮
     private void OnGUI()
     {
+        // 读取用户输入的服务器地址
         EditorGUILayout.LabelField("输入 IP 或域名（不含端口，端口由 KcpTransport 决定）：");
         _address = EditorGUILayout.TextField(_address);
 
         EditorGUILayout.Space(6);
         using (new EditorGUILayout.HorizontalScope())
         {
+            // 确认时提交当前地址，取消时直接关闭
             if (GUILayout.Button("确定"))
             {
                 if (_onConfirm != null)
